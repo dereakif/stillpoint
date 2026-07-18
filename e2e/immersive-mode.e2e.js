@@ -50,6 +50,46 @@ test('renders document paragraphs and returns to editing', async ({ page }) => {
   );
 });
 
+test('preserves source while exposing structured block metadata', async ({
+  page,
+}) => {
+  const source =
+    '# Introduction\n\nA paragraph.\n\n> A quote.\n\n- First\n- Second\n\n---';
+
+  await page.goto('/');
+  await openDocument(page, source);
+
+  await expect(page.locator('#paragraph-1')).toHaveAttribute(
+    'data-block-type',
+    'heading'
+  );
+  await expect(page.locator('#paragraph-2')).toHaveAttribute(
+    'data-block-type',
+    'paragraph'
+  );
+  await expect(page.locator('#paragraph-3')).toHaveAttribute(
+    'data-block-type',
+    'quote'
+  );
+  await expect(page.locator('#paragraph-4')).toHaveAttribute(
+    'data-block-type',
+    'list'
+  );
+  await expect(page.locator('#paragraph-5')).toHaveAttribute(
+    'data-block-type',
+    'separator'
+  );
+  await expect(page.locator('#paragraph-1')).toHaveAttribute(
+    'data-section-id',
+    'section-1'
+  );
+
+  await page.getByRole('button', { name: 'Edit document' }).click();
+  await expect(page.getByPlaceholder('Paste your text here...')).toHaveValue(
+    source
+  );
+});
+
 test('shows synchronized navigation progress and resume context', async ({
   page,
 }) => {

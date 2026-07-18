@@ -154,11 +154,11 @@ Add chapters, headings, a table of contents, and meaningful section boundaries.
 
 ## Structured document model
 
-- [ ] Define a document model with stable document, section, block, and token IDs.
-- [ ] Represent headings, paragraphs, quotes, lists, and separators.
-- [ ] Keep source text separate from parsed document structure.
-- [ ] Store token-to-block mappings for position synchronization.
-- [ ] Preserve enough source information to edit or reparse a document.
+- [x] Define a document model with stable document, section, block, and token IDs.
+- [x] Represent headings, paragraphs, quotes, lists, and separators.
+- [x] Keep source text separate from parsed document structure.
+- [x] Store token-to-block mappings for position synchronization.
+- [x] Preserve enough source information to edit or reparse a document.
 
 Suggested direction:
 

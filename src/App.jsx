@@ -2,11 +2,14 @@ import { useEffect, useRef, useState } from 'react';
 import RSVPReader from './components/RSVPReader';
 import DocumentEditor from './components/DocumentEditor';
 import DocumentView from './components/DocumentView';
+import { createDocumentModel, tokenIndexToPosition } from './utils';
 
 const MODE_TRANSITION_DURATION = 800;
 
 function App() {
-  const [text, setText] = useState('');
+  const [document, setDocument] = useState(() =>
+    createDocumentModel('', { revision: 0 })
+  );
   const [mode, setMode] = useState('edit');
   const [readingPosition, setReadingPosition] = useState(null);
   const [returnContext, setReturnContext] = useState(null);
@@ -22,9 +25,29 @@ function App() {
     []
   );
 
+  const text = document.source.text;
+
+  const replaceDocumentText = (newText) => {
+    setDocument((currentDocument) =>
+      createDocumentModel(newText, {
+        id: currentDocument.id,
+        title: currentDocument.title,
+        sourceFormat: currentDocument.source.format,
+        revision: currentDocument.source.revision + 1,
+      })
+    );
+  };
+
   const saveDocument = (newText) => {
-    setText(newText);
-    setReadingPosition({ blockId: 'paragraph-1', tokenOffset: 0 });
+    const newDocument = createDocumentModel(newText, {
+      id: document.id,
+      title: document.title,
+      sourceFormat: document.source.format,
+      revision: document.source.revision + 1,
+    });
+
+    setDocument(newDocument);
+    setReadingPosition(tokenIndexToPosition(newDocument.tokens, 0));
     setReturnContext(null);
     isExitingRef.current = false;
     setMode('document');
@@ -72,7 +95,7 @@ function App() {
         mode === 'immersive' ||
         mode === 'returning') && (
         <DocumentView
-          text={text}
+          document={document}
           readingPosition={readingPosition}
           returnContext={returnContext}
           isImmersive={mode === 'immersive'}
@@ -85,7 +108,7 @@ function App() {
         <RSVPReader
           key={readingSessionId}
           text={text}
-          setText={setText}
+          setText={replaceDocumentText}
           readingPosition={readingPosition}
           onReadingPositionChange={setReadingPosition}
           isExiting={mode === 'returning'}

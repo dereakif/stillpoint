@@ -74,6 +74,12 @@ Structured headings are planned for Phase 2. When introduced, heading clicks wil
 - Changing WPM during playback immediately redisplays the current token and gives it a full duration calculated at the new speed.
 - Playing after completion restarts playback from the first token. `reset` returns to and previews the first token while paused; `restart` returns to the first token and begins playing.
 
+## Structured document model
+
+`createDocumentModel(sourceText, options)` creates the versioned model used by the application. The original source remains available at `document.source.text`, while normalized source ranges, sections, classified blocks, and RSVP token mappings are stored separately for navigation and future reparsing.
+
+Documents use stable document, section, block, and token IDs. Blocks currently classify heading, paragraph, quote, list, and separator shapes without changing their source text. `document.tokenToBlock` maps every structured token ID back to its section, block, and token offset.
+
 ## RSVP player API
 
 `createRSVPPlayer(text, options)` returns an immutable public interface. Internal timers, tokens, and listener collections remain private.

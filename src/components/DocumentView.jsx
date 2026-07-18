@@ -1,22 +1,21 @@
 import { useEffect, useState } from 'react';
 import { Edit3, Play } from 'lucide-react';
-import {
-  createDocumentParagraphs,
-  getParagraphTokenRange,
-  getReadingPositionSummary,
-} from '../utils';
+import { getParagraphTokenRange, getReadingPositionSummary } from '../utils';
 
 const RETURN_HIGHLIGHT_DURATION = 2400;
 
 const DocumentView = ({
-  text,
+  document: documentModel,
   readingPosition,
   returnContext,
   isImmersive = false,
   onEdit,
   onStartReading,
 }) => {
-  const paragraphs = createDocumentParagraphs(text);
+  const text = documentModel.source.text;
+  const paragraphs = documentModel.sections.flatMap(
+    (section) => section.blocks
+  );
   const positionSummary = getReadingPositionSummary(text, readingPosition);
   const [showReturnHighlight, setShowReturnHighlight] = useState(
     Boolean(returnContext)
@@ -170,6 +169,8 @@ const DocumentView = ({
             >
               <p
                 id={paragraph.id}
+                data-block-type={paragraph.type}
+                data-section-id={paragraph.sectionId}
                 tabIndex={isCurrent ? -1 : undefined}
                 aria-current={isCurrent ? 'location' : undefined}
                 data-token-offset={

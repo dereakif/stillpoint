@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import {
   computeORPIndex,
   computeWordDuration,
+  createDocumentModel,
   createDocumentParagraphs,
   createRSVPPlayer,
   getParagraphTokenRange,
@@ -39,6 +40,95 @@ describe('createDocumentParagraphs', () => {
 
   test('returns no paragraphs for blank text', () => {
     expect(createDocumentParagraphs('  \n\n  ')).toEqual([]);
+  });
+});
+
+describe('createDocumentModel', () => {
+  const source =
+    '# Introduction\r\n\r\nA readable paragraph.\r\n\r\n> A quoted thought.\r\n\r\n- First item\r\n- Second item\r\n\r\n---';
+
+  test('creates stable document, section, block, and token IDs', () => {
+    const document = createDocumentModel(source, {
+      id: 'document-reading-list',
+      title: 'Reading list',
+      revision: 3,
+    });
+
+    expect(document).toEqual(
+      expect.objectContaining({
+        schemaVersion: 1,
+        id: 'document-reading-list',
+        title: 'Reading list',
+      })
+    );
+    expect(document.sections).toHaveLength(1);
+    expect(document.sections[0].id).toBe('section-1');
+    expect(document.sections[0].blockIds).toEqual([
+      'paragraph-1',
+      'paragraph-2',
+      'paragraph-3',
+      'paragraph-4',
+      'paragraph-5',
+    ]);
+    expect(document.tokens[0]).toEqual(
+      expect.objectContaining({
+        id: 'token-1',
+        sectionId: 'section-1',
+        blockId: 'paragraph-1',
+        tokenOffset: 0,
+      })
+    );
+    expect(document.tokenToBlock['token-1']).toEqual({
+      sectionId: 'section-1',
+      blockId: 'paragraph-1',
+      tokenOffset: 0,
+    });
+  });
+
+  test('represents supported block shapes without changing source text', () => {
+    const document = createDocumentModel(source);
+
+    expect(document.source).toEqual(
+      expect.objectContaining({
+        text: source,
+        format: 'plain-text',
+        revision: 1,
+        rangeBasis: 'normalizedText',
+      })
+    );
+    expect(document.sections[0].blocks.map((block) => block.type)).toEqual([
+      'heading',
+      'paragraph',
+      'quote',
+      'list',
+      'separator',
+    ]);
+
+    document.sections[0].blocks.forEach((block) => {
+      expect(
+        document.source.normalizedText.slice(
+          block.source.start,
+          block.source.end
+        )
+      ).toBe(block.text);
+    });
+  });
+
+  test('preserves IDs when the same document is reparsed', () => {
+    const first = createDocumentModel(source, { id: 'document-7' });
+    const reparsed = createDocumentModel(first.source.text, {
+      id: first.id,
+      revision: first.source.revision + 1,
+    });
+
+    expect(reparsed.id).toBe(first.id);
+    expect(reparsed.sections.map((section) => section.id)).toEqual(
+      first.sections.map((section) => section.id)
+    );
+    expect(reparsed.tokens.map((token) => token.id)).toEqual(
+      first.tokens.map((token) => token.id)
+    );
+    expect(reparsed.source.revision).toBe(2);
   });
 });
 

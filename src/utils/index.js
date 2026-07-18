@@ -10,6 +10,10 @@
  * @property {boolean} isParagraphEnd
  * @property {string} blockId
  * @property {number} tokenOffset
+ * @property {string} [id]
+ * @property {string} [sectionId]
+ * @property {'heading' | 'paragraph' | 'quote' | 'list' | 'separator'} [blockType]
+ * @property {{ start: number, end: number } | null} [source]
  */
 
 /**
@@ -219,6 +223,128 @@ export const tokenize = (rawText) => {
   });
 
   return tokens;
+};
+
+const classifyDocumentBlock = (text) => {
+  const lines = text.split('\n').map((line) => line.trim());
+
+  if (/^(?:-{3,}|\*{3,}|_{3,})$/.test(text.trim())) return 'separator';
+  if (/^#{1,6}\s+\S/.test(lines[0])) return 'heading';
+  if (lines.every((line) => /^>\s*\S/.test(line))) return 'quote';
+  if (lines.every((line) => /^(?:[-+*]|\d+[.)])\s+\S/.test(line))) {
+    return 'list';
+  }
+
+  return 'paragraph';
+};
+
+/**
+ * Creates the versioned document model used by navigation, editing, and future
+ * structured importers. Source text remains intact and separate from parsed
+ * sections, blocks, and tokens.
+ *
+ * IDs are deterministic within a document revision. Callers should preserve
+ * the document ID when reparsing edited source.
+ *
+ * @param {string} rawText
+ * @param {{ id?: string, title?: string, sourceFormat?: string, revision?: number }} [options]
+ */
+export const createDocumentModel = (
+  rawText,
+  {
+    id = 'document-1',
+    title = 'Untitled document',
+    sourceFormat = 'plain-text',
+    revision = 1,
+  } = {}
+) => {
+  const normalizedText = rawText.replace(/\r\n?/g, '\n');
+  const paragraphs = createDocumentParagraphs(normalizedText);
+  const sectionId = 'section-1';
+  let sourceSearchFrom = 0;
+
+  const blocks = paragraphs.map((paragraph) => {
+    const sourceStart = normalizedText.indexOf(
+      paragraph.text,
+      sourceSearchFrom
+    );
+    const start = sourceStart === -1 ? sourceSearchFrom : sourceStart;
+    const end = start + paragraph.text.length;
+    sourceSearchFrom = end;
+
+    return {
+      id: paragraph.id,
+      type: classifyDocumentBlock(paragraph.text),
+      text: paragraph.text,
+      sectionId,
+      source: { start, end },
+      tokens: [],
+    };
+  });
+
+  const blockById = Object.fromEntries(
+    blocks.map((block) => [block.id, block])
+  );
+  const blockTokenSearchOffsets = new Map();
+  const tokens = tokenize(normalizedText).map((token, index) => {
+    const block = blockById[token.blockId];
+    const localSearchFrom = blockTokenSearchOffsets.get(token.blockId) ?? 0;
+    const localStart = block?.text.indexOf(token.text, localSearchFrom) ?? -1;
+    const localEnd = localStart === -1 ? -1 : localStart + token.text.length;
+
+    if (localEnd !== -1) {
+      blockTokenSearchOffsets.set(token.blockId, localEnd);
+    }
+
+    const structuredToken = {
+      ...token,
+      id: `token-${index + 1}`,
+      sectionId,
+      blockType: block?.type ?? 'paragraph',
+      source:
+        block && localStart !== -1
+          ? {
+              start: block.source.start + localStart,
+              end: block.source.start + localEnd,
+            }
+          : null,
+    };
+
+    block?.tokens.push(structuredToken);
+    return structuredToken;
+  });
+
+  return {
+    schemaVersion: 1,
+    id,
+    title,
+    source: {
+      text: rawText,
+      normalizedText,
+      format: sourceFormat,
+      revision,
+      rangeBasis: 'normalizedText',
+    },
+    sections: [
+      {
+        id: sectionId,
+        title: null,
+        blockIds: blocks.map((block) => block.id),
+        blocks,
+      },
+    ],
+    tokens,
+    tokenToBlock: Object.fromEntries(
+      tokens.map((token) => [
+        token.id,
+        {
+          sectionId: token.sectionId,
+          blockId: token.blockId,
+          tokenOffset: token.tokenOffset,
+        },
+      ])
+    ),
+  };
 };
 
 /**
