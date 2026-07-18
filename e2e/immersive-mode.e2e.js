@@ -79,6 +79,53 @@ test('starts immersive mode from a chosen paragraph by pointer or keyboard', asy
   await expect(page.getByTestId('current-word')).toHaveText('alpha');
 });
 
+test('connects the selected paragraph through entry and return transitions', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await page.clock.install();
+  await openDocument(page, 'alpha beta\n\ngamma delta epsilon zeta');
+
+  await page.getByRole('button', { name: 'Immerse from paragraph 2' }).click();
+  await page.clock.fastForward(900);
+
+  const documentView = page.getByTestId('document-view');
+  const immersiveMode = page.locator(
+    'section[aria-label="Immersive reading mode"]'
+  );
+  const selectedParagraphContainer = page.locator('#paragraph-2').locator('..');
+  const surroundingParagraphContainer = page
+    .locator('#paragraph-1')
+    .locator('..');
+
+  await expect(documentView).toHaveAttribute('aria-hidden', 'true');
+  await expect(immersiveMode).toHaveAttribute(
+    'data-transition-state',
+    'entered'
+  );
+  await expect(immersiveMode).toHaveCSS('transition-duration', '0.8s');
+  await expect(selectedParagraphContainer).toHaveCSS('opacity', '0.7');
+  await expect(surroundingParagraphContainer).toHaveCSS('opacity', '0.1');
+
+  await page.keyboard.press('Escape');
+  await expect(immersiveMode).toHaveAttribute(
+    'data-transition-state',
+    'exiting'
+  );
+  await expect(documentView).toHaveAttribute('aria-hidden', 'false');
+
+  const currentParagraph = page.locator('#paragraph-2');
+  await expect(currentParagraph).toBeFocused();
+  await expect(currentParagraph).toHaveAttribute('data-token-offset', '0');
+
+  await page.keyboard.press('ArrowRight');
+  await expect(currentParagraph).toHaveAttribute('data-token-offset', '0');
+
+  await page.clock.fastForward(800);
+  await expect(immersiveMode).toHaveCount(0);
+  await expect(selectedParagraphContainer).toHaveCSS('opacity', '1');
+});
+
 test('exits immersive mode during the countdown', async ({ page }) => {
   await page.goto('/');
   await page.clock.install();
@@ -187,8 +234,16 @@ test('disables immersive transitions when reduced motion is preferred', async ({
   const immersiveContent = page.getByTestId('immersive-content');
   const readingProgress = page.getByTestId('reading-progress');
 
+  const immersiveMode = page.locator(
+    'section[aria-label="Immersive reading mode"]'
+  );
+  const documentHeader = page.getByTestId('document-view').locator('header');
+
   await expect(immersiveContent).toBeVisible();
-  await expect(immersiveContent).toHaveCSS('transition-property', 'none');
+  await expect(immersiveMode).toHaveCSS('transition-property', 'opacity');
+  await expect(immersiveContent).toHaveCSS('transition-property', 'opacity');
+  await expect(documentHeader).toHaveCSS('transition-property', 'opacity');
+  await expect(immersiveContent).toHaveCSS('filter', 'none');
   await expect(readingProgress).toHaveCSS('transition-property', 'none');
 });
 

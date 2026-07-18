@@ -8,15 +8,18 @@ const RSVPReader = ({
   setText,
   readingPosition,
   onReadingPositionChange,
+  isExiting = false,
   onExit,
 }) => {
   const engineRef = useRef(null);
   const readerRef = useRef(null);
   const countdownTimerRef = useRef(null);
   const playTimerRef = useRef(null);
+  const entryFrameRef = useRef(null);
 
   const [countdown, setCountdown] = useState(3);
   const [isReady, setIsReady] = useState(false);
+  const [isEntered, setIsEntered] = useState(false);
 
   if (engineRef.current === null) {
     engineRef.current = createRSVPPlayer(text, {
@@ -77,7 +80,7 @@ const RSVPReader = ({
 
   const exitImmersiveMode = () => {
     const engine = engineRef.current;
-    if (!engine) return;
+    if (!engine || isExiting) return;
 
     engine.pause();
     clearCountdownTimers();
@@ -106,9 +109,14 @@ const RSVPReader = ({
 
   useEffect(() => {
     readerRef.current?.focus();
+    entryFrameRef.current = window.requestAnimationFrame(() => {
+      entryFrameRef.current = null;
+      setIsEntered(true);
+    });
     startCountdown();
 
     return () => {
+      window.cancelAnimationFrame(entryFrameRef.current);
       clearCountdownTimers();
       engineRef.current?.pause();
     };
@@ -117,7 +125,7 @@ const RSVPReader = ({
   useEffect(() => {
     const handleKeyDown = async (event) => {
       const engine = engineRef.current;
-      if (!engine) return;
+      if (!engine || isExiting) return;
 
       const target = event.target;
       const isFormControl =
@@ -176,14 +184,22 @@ const RSVPReader = ({
       window.removeEventListener('keydown', handleKeyDown);
     };
     // oxlint-disable-next-line react-hooks/exhaustive-deps
-  }, [isReady, onExit]);
+  }, [isReady, isExiting, onExit]);
 
   return (
     <section
       ref={readerRef}
       tabIndex={-1}
       aria-label="Immersive reading mode"
-      className="relative flex min-h-screen flex-col outline-none caret-transparent"
+      aria-hidden={isExiting}
+      data-transition-state={
+        isExiting ? 'exiting' : isEntered ? 'entered' : 'entering'
+      }
+      className={`fixed inset-0 z-40 flex min-h-screen flex-col bg-base-100/95 outline-none backdrop-blur-md transition-opacity duration-800 ease-out caret-transparent motion-reduce:backdrop-blur-none motion-reduce:duration-200 ${
+        isEntered && !isExiting
+          ? 'pointer-events-auto opacity-100'
+          : 'pointer-events-none opacity-0'
+      }`}
     >
       <button
         type="button"
@@ -195,7 +211,7 @@ const RSVPReader = ({
 
       <div
         data-testid="immersive-content"
-        className={`flex flex-1 items-center justify-center transition-all duration-700 motion-reduce:transition-none ${
+        className={`flex flex-1 items-center justify-center transition-[opacity,filter,transform] duration-700 motion-reduce:transform-none motion-reduce:transition-opacity motion-reduce:duration-200 motion-reduce:blur-none ${
           isReady
             ? 'scale-100 opacity-100 blur-0'
             : 'scale-95 opacity-30 blur-sm'

@@ -8,6 +8,7 @@ const DocumentView = ({
   text,
   readingPosition,
   returnContext,
+  isImmersive = false,
   onEdit,
   onStartReading,
 }) => {
@@ -49,8 +50,19 @@ const DocumentView = ({
   }
 
   return (
-    <section className="mx-auto flex min-h-screen w-full max-w-3xl flex-col px-6 py-12 sm:px-8">
-      <header className="mb-10 flex flex-wrap items-center justify-between gap-4 border-b border-base-300 pb-5">
+    <section
+      data-testid="document-view"
+      inert={isImmersive}
+      aria-hidden={isImmersive}
+      className="mx-auto flex min-h-screen w-full max-w-3xl flex-col px-6 py-12 sm:px-8"
+    >
+      <header
+        className={`mb-10 flex flex-wrap items-center justify-between gap-4 border-b border-base-300 pb-5 transition-[opacity,filter,transform] duration-800 ease-out motion-reduce:transform-none motion-reduce:transition-opacity motion-reduce:duration-200 motion-reduce:blur-none ${
+          isImmersive
+            ? '-translate-y-2 opacity-15 blur-sm'
+            : 'translate-y-0 opacity-100 blur-0'
+        }`}
+      >
         <div>
           <p className="text-sm font-medium text-primary">Stillpoint</p>
           <h1 className="mt-1 text-3xl font-bold tracking-tight">Document</h1>
@@ -89,7 +101,16 @@ const DocumentView = ({
             : null;
 
           return (
-            <div key={paragraph.id} className="group relative">
+            <div
+              key={paragraph.id}
+              className={`group relative transition-[opacity,filter,transform] duration-800 ease-out motion-reduce:transform-none motion-reduce:transition-opacity motion-reduce:duration-200 motion-reduce:blur-none ${
+                isImmersive
+                  ? isCurrent
+                    ? 'scale-[0.99] opacity-70 blur-0'
+                    : 'scale-[0.985] opacity-10 blur-[2px]'
+                  : 'scale-100 opacity-100 blur-0'
+              }`}
+            >
               <p
                 id={paragraph.id}
                 tabIndex={isCurrent ? -1 : undefined}

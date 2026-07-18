@@ -120,15 +120,15 @@ Suggested initial shape:
 
 ## Mode transition
 
-- [ ] Design the navigation-to-immersive transition.
-- [ ] Fade and soften surrounding document content.
-- [ ] Keep the selected paragraph visually connected during entry.
-- [ ] Introduce the RSVP focal point before playback begins.
-- [ ] Reverse the transition when returning to navigation mode.
-- [ ] Keep transition duration around 700–1,000 ms.
-- [ ] Stop playback immediately even if an exit animation is still running.
-- [ ] Implement a reduced-motion opacity-only transition.
-- [ ] Prevent animation state from corrupting reading position.
+- [x] Design the navigation-to-immersive transition.
+- [x] Fade and soften surrounding document content.
+- [x] Keep the selected paragraph visually connected during entry.
+- [x] Introduce the RSVP focal point before playback begins.
+- [x] Reverse the transition when returning to navigation mode.
+- [x] Keep transition duration around 700–1,000 ms.
+- [x] Stop playback immediately even if an exit animation is still running.
+- [x] Implement a reduced-motion opacity-only transition.
+- [x] Prevent animation state from corrupting reading position.
 
 ## Navigation-mode controls
 
