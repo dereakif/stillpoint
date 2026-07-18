@@ -194,6 +194,8 @@ Suggested direction:
 - [ ] Preserve URLs, punctuation, paragraph breaks, and Unicode text.
 - [ ] Add parser tests for malformed and ambiguous input.
 
+
+
 ## Table of contents
 
 - [ ] Add a desktop table-of-contents sidebar.
@@ -270,8 +272,25 @@ Remember documents, positions, and preferences across sessions.
 - [ ] Recover gracefully from an invalid or outdated saved position.
 - [ ] Version persisted data and plan migrations.
 
+## Personalized calibration
+
+- [ ] Offer an optional first-run calibration instead of assuming one default reading speed fits everyone.
+- [ ] Use a roughly 30-second representative passage with normal punctuation, varied word lengths, and enough context for comprehension.
+- [ ] Ask a short, accessible comprehension check after the passage.
+- [ ] Combine reading comfort and comprehension—not speed alone—to recommend an initial WPM.
+- [ ] Avoid presenting the recommendation as a precise clinical or cognitive measurement.
+- [ ] Let readers accept, adjust, or ignore the recommended speed.
+- [ ] Persist the current recommendation, calibration date, passage version, and result history locally.
+- [ ] Offer an explicit **Recalibrate** action in reading settings.
+- [ ] Offer occasional, non-blocking recalibration prompts after meaningful reading time or word-count milestones.
+- [ ] Let readers dismiss periodic prompts permanently or postpone them.
+- [ ] Compare recalibration results over time without streaks, pressure, or claims that faster is always better.
+- [ ] Account for passage familiarity, language, and content difficulty when interpreting results.
+- [ ] Add browser tests for completing, skipping, retrying, dismissing, and applying calibration.
+
 ## Reading settings
 
+- [ ] Use the accepted calibration result as the initial WPM while preserving manual overrides.
 - [ ] Add pacing presets: Smooth, Natural, and Deliberate.
 - [ ] Add WPM control.
 - [ ] Add countdown duration.
@@ -312,6 +331,7 @@ Remember documents, positions, and preferences across sessions.
 - [ ] Settings are restored consistently.
 - [ ] Stored data has a versioned schema and recovery behavior.
 - [ ] Readers can export or remove their local data.
+- [ ] Readers can calibrate, override, and later revisit their recommended reading pace.
 
 ---
 
@@ -362,20 +382,27 @@ Expand navigation, comprehension, and review without cluttering immersive mode.
 - [ ] Show an optional, understated session summary after exit.
 - [ ] Avoid manipulative streaks or forced gamification.
 
-## Additional imports
+## PDF and EPUB ingestion
 
-- [ ] Evaluate EPUB import.
-- [ ] Evaluate PDF text extraction and its formatting limitations.
-- [ ] Evaluate HTML/article import.
+- [ ] Support local EPUB upload and preserve its title, author, table of contents, chapters, and reading order.
+- [ ] Support local PDF upload with clear expectations about text-extraction and layout limitations.
+- [ ] Keep local file extraction on-device where practical.
+- [ ] Detect image-only PDFs and explain when OCR would be required rather than silently importing an empty document.
+- [ ] Reconstruct PDF reading order conservatively and flag uncertain multi-column or complex layouts.
+- [ ] Detect recurring PDF headers, footers, page numbers, and line-end hyphenation without silently deleting uncertain text.
 - [ ] Preserve chapter structure where the source format provides it.
-- [ ] Show import warnings when structure or text quality is uncertain.
-- [ ] Keep external content fetching explicit and privacy-conscious.
+- [ ] Show a reviewable structure and text preview before saving any imported file.
+- [ ] Show import warnings when structure, reading order, or text quality is uncertain.
+- [ ] Preserve source filename and relevant publication metadata.
+- [ ] Treat archives, embedded resources, files, and metadata as untrusted input and enforce size/resource limits.
+- [ ] Add parser fixtures and tests for valid, malformed, encrypted, image-only, and unusually large files.
 
 ## Completion criteria
 
 - [ ] Readers can recover context without abandoning their position.
 - [ ] Search, bookmarks, and notes remain navigation-mode tools rather than immersive clutter.
-- [ ] Additional import formats produce a reviewable structured document before reading.
+- [ ] PDF and EPUB imports produce a reviewable structured document before reading.
+- [ ] Imported files retain useful source metadata and fail with actionable feedback.
 
 ---
 
