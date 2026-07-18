@@ -39,8 +39,8 @@ Prepare the current application for shared position state and larger product fea
 
 ## Engine integration
 
-- [ ] Replace single mutable callback properties with a subscription API.
-- [ ] Make every subscription return an unsubscribe function.
+- [x] Replace single mutable callback properties with a subscription API.
+- [x] Make every subscription return an unsubscribe function.
 - [ ] Define a stable public interface for player state and commands.
 - [ ] Remove stale implementation comments and unused function arguments.
 - [ ] Add a documented token shape using JSDoc or TypeScript.
@@ -60,7 +60,7 @@ Prepare the current application for shared position state and larger product fea
 
 - [ ] Playback has documented and tested end, restart, pause, and progress semantics.
 - [x] Empty documents cannot crash the player.
-- [ ] UI components can subscribe to engine events without replacing one another.
+- [x] UI components can subscribe to engine events without replacing one another.
 - [ ] Critical immersive-mode lifecycle behavior is covered in a real browser.
 
 ---

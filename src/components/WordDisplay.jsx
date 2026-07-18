@@ -61,12 +61,12 @@ const WordDisplay = ({ engineRef }) => {
       }
     };
 
-    engine.onWord = handleWord;
-    engine.onProgress = handleProgress;
+    const unsubscribeWord = engine.subscribe('word', handleWord);
+    const unsubscribeProgress = engine.subscribe('progress', handleProgress);
 
     return () => {
-      if (engine.onWord === handleWord) engine.onWord = null;
-      if (engine.onProgress === handleProgress) engine.onProgress = null;
+      unsubscribeWord();
+      unsubscribeProgress();
     };
   }, [engineRef]);
 

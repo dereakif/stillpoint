@@ -8,15 +8,18 @@ const Toolbar = ({ engineRef }) => {
   useEffect(() => {
     const engine = engineRef.current;
 
-    engine.onPlayStateChange = setIsPlaying;
-    engine.onChangeWpm = setWpm;
+    const unsubscribePlayState = engine.subscribe(
+      'playStateChange',
+      setIsPlaying
+    );
+    const unsubscribeWpm = engine.subscribe('wpmChange', setWpm);
 
     setIsPlaying(engine.isPlaying());
     setWpm(engine.getWpm());
 
     return () => {
-      engine.onPlayStateChange = null;
-      engine.onChangeWpm = null;
+      unsubscribePlayState();
+      unsubscribeWpm();
     };
   }, [engineRef]);
 

@@ -157,11 +157,11 @@ describe('createRSVPPlayer', () => {
     const words = [];
     const progress = [];
     const completed = new Promise((resolve) => {
-      player.onComplete = resolve;
+      player.subscribe('complete', resolve);
     });
 
-    player.onWord = (token) => words.push(token.text);
-    player.onProgress = (value) => progress.push(value);
+    player.subscribe('word', (token) => words.push(token.text));
+    player.subscribe('progress', (value) => progress.push(value));
 
     player.play();
     expect(player.isPlaying()).toBe(true);
@@ -178,14 +178,13 @@ describe('createRSVPPlayer', () => {
     const player = createRSVPPlayer('alpha', { baseWpm: 800 });
     const words = [];
     const completed = new Promise((resolve) => {
-      player.onComplete = resolve;
+      player.subscribe('complete', resolve);
     });
 
-    player.onWord = (token) => words.push(token.text);
+    player.subscribe('word', (token) => words.push(token.text));
     player.play();
     await completed;
 
-    player.onComplete = null;
     player.play();
 
     expect(words).toEqual(['alpha', 'alpha']);
@@ -197,7 +196,7 @@ describe('createRSVPPlayer', () => {
     const player = createRSVPPlayer('alpha beta');
     const states = [];
 
-    player.onPlayStateChange = (playing) => states.push(playing);
+    player.subscribe('playStateChange', (playing) => states.push(playing));
     player.play();
     player.pause();
 
@@ -209,7 +208,7 @@ describe('createRSVPPlayer', () => {
     const player = createRSVPPlayer('alpha beta');
     const words = [];
 
-    player.onWord = (token) => words.push(token.text);
+    player.subscribe('word', (token) => words.push(token.text));
     player.play();
     player.pause();
     player.play();
@@ -223,7 +222,7 @@ describe('createRSVPPlayer', () => {
     const player = createRSVPPlayer('alpha beta gamma delta');
     const words = [];
 
-    player.onWord = (token) => words.push(token.text);
+    player.subscribe('word', (token) => words.push(token.text));
     player.preview();
     player.skipForward(2);
     player.rewind(1);
@@ -237,7 +236,7 @@ describe('createRSVPPlayer', () => {
     const player = createRSVPPlayer('alpha beta gamma');
     const progress = [];
 
-    player.onProgress = (value) => progress.push(value);
+    player.subscribe('progress', (value) => progress.push(value));
     player.preview();
     player.skipForward(2);
     player.rewind(1);
@@ -249,7 +248,7 @@ describe('createRSVPPlayer', () => {
     const player = createRSVPPlayer('alpha beta');
     const words = [];
 
-    player.onWord = (token) => words.push(token.text);
+    player.subscribe('word', (token) => words.push(token.text));
     player.skipForward(1);
     player.reset();
     expect(player.isPlaying()).toBe(false);
@@ -265,8 +264,8 @@ describe('createRSVPPlayer', () => {
     const words = [];
     const progress = [];
 
-    player.onWord = (token) => words.push(token);
-    player.onProgress = (value) => progress.push(value);
+    player.subscribe('word', (token) => words.push(token));
+    player.subscribe('progress', (value) => progress.push(value));
 
     player.preview();
     player.play();
@@ -284,7 +283,7 @@ describe('createRSVPPlayer', () => {
     const player = createRSVPPlayer('alpha');
     const changes = [];
 
-    player.onChangeWpm = (wpm) => changes.push(wpm);
+    player.subscribe('wpmChange', (wpm) => changes.push(wpm));
     player.setWpm(50);
     expect(player.getWpm()).toBe(100);
     player.setWpm(900);
@@ -296,7 +295,7 @@ describe('createRSVPPlayer', () => {
     const player = createRSVPPlayer('alpha beta');
     const words = [];
 
-    player.onWord = (token) => words.push(token.text);
+    player.subscribe('word', (token) => words.push(token.text));
     player.play();
     player.setWpm(400);
 
@@ -306,11 +305,44 @@ describe('createRSVPPlayer', () => {
     player.pause();
   });
 
+  test('supports multiple listeners and independent unsubscription', () => {
+    const player = createRSVPPlayer('alpha beta');
+    const firstListenerWords = [];
+    const secondListenerWords = [];
+    const unsubscribeFirst = player.subscribe('word', (token) =>
+      firstListenerWords.push(token.text)
+    );
+    const unsubscribeSecond = player.subscribe('word', (token) =>
+      secondListenerWords.push(token.text)
+    );
+
+    player.preview();
+    expect(unsubscribeFirst()).toBe(true);
+    expect(unsubscribeFirst()).toBe(false);
+    player.skipForward(1);
+    unsubscribeSecond();
+    player.rewind(1);
+
+    expect(firstListenerWords).toEqual(['alpha']);
+    expect(secondListenerWords).toEqual(['alpha', 'beta']);
+  });
+
+  test('rejects unknown events and non-function listeners', () => {
+    const player = createRSVPPlayer('alpha');
+
+    expect(() => player.subscribe('unknown', () => {})).toThrow(
+      'Unknown RSVP player event: unknown'
+    );
+    expect(() => player.subscribe('word', null)).toThrow(
+      'RSVP player listener must be a function'
+    );
+  });
+
   test('loads replacement text at the beginning and pauses playback', () => {
     const player = createRSVPPlayer('old text');
     const words = [];
 
-    player.onWord = (token) => words.push(token.text);
+    player.subscribe('word', (token) => words.push(token.text));
     player.play();
     player.loadText('new content');
     player.preview();

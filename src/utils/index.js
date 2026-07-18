@@ -189,27 +189,48 @@ export const createRSVPPlayer = (text, { baseWpm = 300 } = {}) => {
   let playing = false;
   let wpm = baseWpm;
 
-  const player = {
-    onWord: null, // ← mutable property, children can assign to this later
-    onProgress: null,
-    onComplete: null,
-    onPlayStateChange: null,
-    onChangeWpm: null,
+  const listeners = {
+    word: new Set(),
+    progress: new Set(),
+    complete: new Set(),
+    playStateChange: new Set(),
+    wpmChange: new Set(),
+  };
+
+  const emit = (event, value) => {
+    listeners[event].forEach((listener) => listener(value));
+  };
+
+  const player = {};
+
+  player.subscribe = (event, listener) => {
+    const eventListeners = listeners[event];
+
+    if (!eventListeners) {
+      throw new Error(`Unknown RSVP player event: ${event}`);
+    }
+
+    if (typeof listener !== 'function') {
+      throw new TypeError('RSVP player listener must be a function');
+    }
+
+    eventListeners.add(listener);
+    return () => eventListeners.delete(listener);
   };
 
   const emitCurrentToken = () => {
     if (!tokens.length || index >= tokens.length) return;
 
-    player.onWord?.(tokens[index]);
-    player.onProgress?.((index + 1) / tokens.length);
+    emit('word', tokens[index]);
+    emit('progress', (index + 1) / tokens.length);
   };
 
   const scheduleNext = () => {
     if (!playing || index >= tokens.length) {
       if (index >= tokens.length && tokens.length) {
         playing = false;
-        player.onPlayStateChange?.(false);
-        player.onComplete?.();
+        emit('playStateChange', false);
+        emit('complete');
       }
       return;
     }
@@ -248,14 +269,14 @@ export const createRSVPPlayer = (text, { baseWpm = 300 } = {}) => {
     }
 
     playing = true;
-    player.onPlayStateChange?.(true);
+    emit('playStateChange', true);
     scheduleNext();
   };
 
   player.pause = () => {
     playing = false;
     clearTimeout(timerId);
-    player.onPlayStateChange?.(false);
+    emit('playStateChange', false);
   };
 
   player.playToggle = () => {
@@ -285,7 +306,7 @@ export const createRSVPPlayer = (text, { baseWpm = 300 } = {}) => {
 
   player.setWpm = (newWpm) => {
     wpm = Math.max(100, Math.min(800, newWpm));
-    player.onChangeWpm?.(wpm);
+    emit('wpmChange', wpm);
 
     if (playing) {
       clearTimeout(timerId);
