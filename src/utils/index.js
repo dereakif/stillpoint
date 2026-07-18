@@ -24,7 +24,7 @@
  */
 
 /**
- * @typedef {'word' | 'progress' | 'positionChange' | 'complete' | 'playStateChange' | 'wpmChange' | 'chapterProgress' | 'chapterComplete'} RSVPPlayerEvent
+ * @typedef {'word' | 'wordRead' | 'progress' | 'positionChange' | 'complete' | 'playStateChange' | 'wpmChange' | 'chapterProgress' | 'chapterComplete'} RSVPPlayerEvent
  */
 
 /**
@@ -653,6 +653,7 @@ export const createRSVPPlayer = (
 
   const listeners = {
     word: new Set(),
+    wordRead: new Set(),
     progress: new Set(),
     positionChange: new Set(),
     complete: new Set(),
@@ -772,7 +773,10 @@ export const createRSVPPlayer = (
   const emitCurrentToken = () => {
     if (!tokens.length || index >= tokens.length) return;
 
-    if (playing) readTokenIndices.add(index);
+    if (playing && !readTokenIndices.has(index)) {
+      readTokenIndices.add(index);
+      emit('wordRead', tokens[index]);
+    }
     emit('word', tokens[index]);
     emit('progress', (index + 1) / tokens.length);
     emit('chapterProgress', getChapterState(index));

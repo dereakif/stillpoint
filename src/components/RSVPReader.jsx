@@ -14,6 +14,7 @@ const RSVPReader = ({
   onWpmChange,
   completedChapterIds = [],
   onChapterComplete,
+  onReadingActivity,
   chapterCompletionBehavior = 'ask',
   onChapterCompletionBehaviorChange,
   isExiting = false,
@@ -25,11 +26,18 @@ const RSVPReader = ({
   const playTimerRef = useRef(null);
   const entryFrameRef = useRef(null);
   const automaticContinueTimerRef = useRef(null);
+  const readingActivityRef = useRef({
+    wordsRead: 0,
+    readingTimeMs: 0,
+    startedAt: null,
+  });
   const chapterCompletionBehaviorRef = useRef(chapterCompletionBehavior);
   const onChapterCompleteRef = useRef(onChapterComplete);
+  const onReadingActivityRef = useRef(onReadingActivity);
   const onExitRef = useRef(onExit);
   chapterCompletionBehaviorRef.current = chapterCompletionBehavior;
   onChapterCompleteRef.current = onChapterComplete;
+  onReadingActivityRef.current = onReadingActivity;
   onExitRef.current = onExit;
 
   const [countdown, setCountdown] = useState(3);
@@ -101,6 +109,25 @@ const RSVPReader = ({
     }, 1000);
   };
 
+  const flushReadingActivity = () => {
+    const activity = readingActivityRef.current;
+    if (activity.startedAt !== null) {
+      activity.readingTimeMs += performance.now() - activity.startedAt;
+      activity.startedAt = null;
+    }
+    if (!activity.wordsRead && !activity.readingTimeMs) return;
+
+    onReadingActivityRef.current?.({
+      wordsRead: activity.wordsRead,
+      readingTimeMs: Math.round(activity.readingTimeMs),
+    });
+    readingActivityRef.current = {
+      wordsRead: 0,
+      readingTimeMs: 0,
+      startedAt: null,
+    };
+  };
+
   const exitImmersiveMode = () => {
     const engine = engineRef.current;
     if (!engine || isExiting) return;
@@ -108,6 +135,7 @@ const RSVPReader = ({
     engine.pause();
     clearCountdownTimers();
     clearAutomaticContinuation();
+    flushReadingActivity();
     onExit(engine.getState().position);
   };
 
@@ -163,6 +191,21 @@ const RSVPReader = ({
     const unsubscribeWpm = onWpmChange
       ? engine.subscribe('wpmChange', onWpmChange)
       : () => {};
+    const unsubscribeWordRead = engine.subscribe('wordRead', () => {
+      readingActivityRef.current.wordsRead += 1;
+    });
+    const unsubscribePlayState = engine.subscribe(
+      'playStateChange',
+      (isPlaying) => {
+        const activity = readingActivityRef.current;
+        if (isPlaying && activity.startedAt === null) {
+          activity.startedAt = performance.now();
+        } else if (!isPlaying && activity.startedAt !== null) {
+          activity.readingTimeMs += performance.now() - activity.startedAt;
+          activity.startedAt = null;
+        }
+      }
+    );
     const unsubscribeChapterComplete = engine.subscribe(
       'chapterComplete',
       (boundary) => {
@@ -182,6 +225,8 @@ const RSVPReader = ({
     return () => {
       unsubscribePosition();
       unsubscribeWpm();
+      unsubscribeWordRead();
+      unsubscribePlayState();
       unsubscribeChapterComplete();
     };
     // oxlint-disable-next-line react-hooks/exhaustive-deps
@@ -200,6 +245,7 @@ const RSVPReader = ({
       clearCountdownTimers();
       clearAutomaticContinuation();
       engineRef.current?.pause();
+      flushReadingActivity();
     };
   }, []);
 

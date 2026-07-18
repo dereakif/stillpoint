@@ -3,6 +3,7 @@ import RSVPReader from './components/RSVPReader';
 import DocumentEditor from './components/DocumentEditor';
 import DocumentLibrary from './components/DocumentLibrary';
 import DocumentView from './components/DocumentView';
+import ReadingCalibration from './components/ReadingCalibration';
 import {
   createDocumentModel,
   positionToTokenIndex,
@@ -15,6 +16,16 @@ import {
   renameDocument as renameStoredDocument,
   saveDocument as saveStoredDocument,
 } from './storage/documentLibrary';
+import {
+  completeCalibration,
+  dismissRecalibrationPrompts,
+  loadCalibrationProfile,
+  postponeRecalibration,
+  recordReadingActivity,
+  saveCalibrationProfile,
+  shouldOfferRecalibration,
+  skipInitialCalibration,
+} from './storage/calibration';
 
 const MODE_TRANSITION_DURATION = 800;
 const SESSION_WRITE_DEBOUNCE = 1500;
@@ -64,7 +75,13 @@ function App() {
   const [mode, setMode] = useState('loading');
   const [readingPosition, setReadingPosition] = useState(null);
   const [completedChapterIds, setCompletedChapterIds] = useState([]);
-  const [wpm, setWpm] = useState(300);
+  const [calibrationProfile, setCalibrationProfile] = useState(
+    loadCalibrationProfile
+  );
+  const [calibrationMode, setCalibrationMode] = useState(null);
+  const [wpm, setWpm] = useState(
+    () => calibrationProfile.currentRecommendation ?? 300
+  );
   const [navigationScrollY, setNavigationScrollY] = useState(0);
   const [returnContext, setReturnContext] = useState(null);
   const [readingSessionId, setReadingSessionId] = useState(0);
@@ -160,6 +177,41 @@ function App() {
     // Persist a quiet snapshot rather than writing on every displayed word.
     // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [document, readingPosition, completedChapterIds, wpm, navigationScrollY]);
+
+  const updateCalibrationProfile = (profile) => {
+    const savedProfile = saveCalibrationProfile(profile);
+    setCalibrationProfile(savedProfile);
+    return savedProfile;
+  };
+
+  const applyCalibration = (result, acceptedWpm) => {
+    const profile = updateCalibrationProfile(
+      completeCalibration(calibrationProfile, result, acceptedWpm)
+    );
+    setWpm(profile.currentRecommendation ?? wpm);
+    setCalibrationMode(null);
+  };
+
+  const skipCalibration = () => {
+    updateCalibrationProfile(skipInitialCalibration(calibrationProfile));
+    setCalibrationMode(null);
+  };
+
+  const postponeCalibration = () => {
+    updateCalibrationProfile(postponeRecalibration(calibrationProfile));
+    setCalibrationMode(null);
+  };
+
+  const dismissCalibrationPrompts = () => {
+    updateCalibrationProfile(dismissRecalibrationPrompts(calibrationProfile));
+    setCalibrationMode(null);
+  };
+
+  const recordSessionActivity = (activity) => {
+    updateCalibrationProfile(
+      recordReadingActivity(calibrationProfile, activity)
+    );
+  };
 
   const updateChapterCompletionBehavior = (behavior) => {
     if (!CHAPTER_COMPLETION_BEHAVIORS.has(behavior)) return;
@@ -295,7 +347,7 @@ function App() {
     setDocument(createEmptyDocument());
     setReadingPosition(null);
     setCompletedChapterIds([]);
-    setWpm(300);
+    setWpm(calibrationProfile.currentRecommendation ?? 300);
     setNavigationScrollY(0);
     setReturnContext(null);
     setMode('edit');
@@ -397,11 +449,40 @@ function App() {
           showEntryHint={!hasStartedImmersive}
           chapterCompletionBehavior={chapterCompletionBehavior}
           onChapterCompletionBehaviorChange={updateChapterCompletionBehavior}
+          calibrationOffer={
+            calibrationProfile.status === 'new'
+              ? 'first-run'
+              : shouldOfferRecalibration(calibrationProfile)
+                ? 'periodic'
+                : null
+          }
+          currentWpm={wpm}
+          onCalibrate={() =>
+            setCalibrationMode(
+              calibrationProfile.status === 'new' ? 'first-run' : 'explicit'
+            )
+          }
+          onSkipCalibration={skipCalibration}
+          onPostponeCalibration={postponeCalibration}
+          onDismissCalibrationPrompts={dismissCalibrationPrompts}
           navigationScrollY={navigationScrollY}
           onNavigationScrollChange={setNavigationScrollY}
           onLibrary={openLibrary}
           onEdit={() => setMode('edit')}
           onStartReading={startReading}
+        />
+      )}
+
+      {calibrationMode && (
+        <ReadingCalibration
+          mode={calibrationMode}
+          currentWpm={wpm}
+          previousRecommendation={calibrationProfile.currentRecommendation}
+          onApply={applyCalibration}
+          onSkip={skipCalibration}
+          onPostpone={postponeCalibration}
+          onDismissPrompts={dismissCalibrationPrompts}
+          onClose={() => setCalibrationMode(null)}
         />
       )}
 
@@ -424,6 +505,7 @@ function App() {
               current.includes(chapterId) ? current : [...current, chapterId]
             )
           }
+          onReadingActivity={recordSessionActivity}
           chapterCompletionBehavior={chapterCompletionBehavior}
           onChapterCompletionBehaviorChange={updateChapterCompletionBehavior}
           isExiting={mode === 'returning'}

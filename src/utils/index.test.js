@@ -670,6 +670,20 @@ describe('createRSVPPlayer', () => {
     expect(player.isPlaying()).toBe(false);
   });
 
+  test('reports each newly read token once for session activity', () => {
+    const player = createRSVPPlayer('alpha beta');
+    const wordsRead = [];
+
+    player.subscribe('wordRead', (token) => wordsRead.push(token.text));
+    player.play();
+    player.setWpm(400);
+    player.pause();
+    player.play();
+
+    expect(wordsRead).toEqual(['alpha']);
+    player.pause();
+  });
+
   test('redisplays the current token for its full duration after resume', () => {
     const player = createRSVPPlayer('alpha beta');
     const words = [];

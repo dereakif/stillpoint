@@ -337,23 +337,23 @@ Remember documents, positions, and preferences across sessions.
 
 ## Personalized calibration
 
-- [ ] Offer an optional first-run calibration instead of assuming one default reading speed fits everyone.
-- [ ] Use a roughly 30-second representative passage with normal punctuation, varied word lengths, and enough context for comprehension.
-- [ ] Ask a short, accessible comprehension check after the passage.
-- [ ] Combine reading comfort and comprehension—not speed alone—to recommend an initial WPM.
-- [ ] Avoid presenting the recommendation as a precise clinical or cognitive measurement.
-- [ ] Let readers accept, adjust, or ignore the recommended speed.
-- [ ] Persist the current recommendation, calibration date, passage version, and result history locally.
-- [ ] Offer an explicit **Recalibrate** action in reading settings.
-- [ ] Offer occasional, non-blocking recalibration prompts after meaningful reading time or word-count milestones.
-- [ ] Let readers dismiss periodic prompts permanently or postpone them.
-- [ ] Compare recalibration results over time without streaks, pressure, or claims that faster is always better.
-- [ ] Account for passage familiarity, language, and content difficulty when interpreting results.
-- [ ] Add browser tests for completing, skipping, retrying, dismissing, and applying calibration.
+- [x] Offer an optional first-run calibration instead of assuming one default reading speed fits everyone.
+- [x] Use a roughly 30-second representative passage with normal punctuation, varied word lengths, and enough context for comprehension.
+- [x] Ask a short, accessible comprehension check after the passage.
+- [x] Combine reading comfort and comprehension—not speed alone—to recommend an initial WPM.
+- [x] Avoid presenting the recommendation as a precise clinical or cognitive measurement.
+- [x] Let readers accept, adjust, or ignore the recommended speed.
+- [x] Persist the current recommendation, calibration date, passage version, and result history locally.
+- [x] Offer an explicit **Recalibrate** action in reading settings.
+- [x] Offer occasional, non-blocking recalibration prompts after meaningful reading time or word-count milestones.
+- [x] Let readers dismiss periodic prompts permanently or postpone them.
+- [x] Compare recalibration results over time without streaks, pressure, or claims that faster is always better.
+- [x] Account for passage familiarity, language, and content difficulty when interpreting results.
+- [x] Add browser tests for completing, skipping, retrying, dismissing, and applying calibration.
 
 ## Reading settings
 
-- [ ] Use the accepted calibration result as the initial WPM while preserving manual overrides.
+- [x] Use the accepted calibration result as the initial WPM while preserving manual overrides.
 - [ ] Add pacing presets: Smooth, Natural, and Deliberate.
 - [ ] Add WPM control.
 - [ ] Add countdown duration.
@@ -396,7 +396,7 @@ Remember documents, positions, and preferences across sessions.
 - [ ] Settings are restored consistently.
 - [ ] Stored data has a versioned schema and recovery behavior.
 - [ ] Readers can export or remove their local data.
-- [ ] Readers can calibrate, override, and later revisit their recommended reading pace.
+- [x] Readers can calibrate, override, and later revisit their recommended reading pace.
 
 ---
 

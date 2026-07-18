@@ -3,6 +3,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Edit3,
+  Gauge,
   Library,
   Menu,
   Play,
@@ -21,6 +22,12 @@ const DocumentView = ({
   showEntryHint = false,
   chapterCompletionBehavior = 'ask',
   onChapterCompletionBehaviorChange,
+  calibrationOffer = null,
+  currentWpm = 300,
+  onCalibrate,
+  onSkipCalibration,
+  onPostponeCalibration,
+  onDismissCalibrationPrompts,
   navigationScrollY = 0,
   onNavigationScrollChange,
   onLibrary,
@@ -410,6 +417,16 @@ const DocumentView = ({
           <button
             type="button"
             className="btn btn-ghost btn-sm shrink-0"
+            aria-label={`Reading settings and recalibrate: ${currentWpm} WPM`}
+            onClick={onCalibrate}
+          >
+            <Gauge className="size-4" />
+            <span className="hidden xl:inline">{currentWpm} WPM</span>
+          </button>
+
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm shrink-0"
             aria-label="Open library"
             onClick={onLibrary}
           >
@@ -429,6 +446,63 @@ const DocumentView = ({
           </button>
         </div>
       </header>
+
+      {calibrationOffer && !isImmersive && (
+        <aside
+          aria-label={
+            calibrationOffer === 'first-run'
+              ? 'Optional reading pace calibration'
+              : 'Optional reading pace check-in'
+          }
+          className="border-b border-primary/20 bg-primary/7 px-4 py-3"
+        >
+          <div className="mx-auto flex max-w-3xl flex-col gap-3 text-sm sm:flex-row sm:items-center">
+            <p className="min-w-0 flex-1">
+              <span className="font-medium">
+                {calibrationOffer === 'first-run'
+                  ? 'Find a comfortable starting pace.'
+                  : 'Ready for a gentle pace check-in?'}
+              </span>{' '}
+              <span className="text-base-content/65">
+                {calibrationOffer === 'first-run'
+                  ? 'Try an optional 30-second local calibration.'
+                  : 'Your reading history suggests it may be useful to recalibrate.'}
+              </span>
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                className="btn btn-primary btn-sm"
+                onClick={onCalibrate}
+              >
+                {calibrationOffer === 'first-run'
+                  ? 'Try calibration'
+                  : 'Recalibrate'}
+              </button>
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={
+                  calibrationOffer === 'first-run'
+                    ? onSkipCalibration
+                    : onPostponeCalibration
+                }
+              >
+                {calibrationOffer === 'first-run' ? 'Not now' : 'Next week'}
+              </button>
+              {calibrationOffer === 'periodic' && (
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm text-base-content/60"
+                  onClick={onDismissCalibrationPrompts}
+                >
+                  Don’t ask again
+                </button>
+              )}
+            </div>
+          </div>
+        </aside>
+      )}
 
       <div
         className={`mx-auto grid w-full max-w-360 transition-[grid-template-columns] duration-300 motion-reduce:transition-none ${
