@@ -8,7 +8,7 @@ const openDocument = async (page, text = 'Focus begins here.') => {
 
 const enterImmersiveMode = async (page, text = 'Focus begins here.') => {
   await openDocument(page, text);
-  await page.getByRole('button', { name: 'Immerse' }).click();
+  await page.getByRole('button', { name: 'Resume reading' }).click();
 };
 
 test('enters immersive mode with the imported document', async ({ page }) => {
@@ -21,7 +21,7 @@ test('enters immersive mode with the imported document', async ({ page }) => {
   await documentInput.fill('Focus begins here.');
   await expect(readButton).toBeEnabled();
   await readButton.click();
-  await page.getByRole('button', { name: 'Immerse' }).click();
+  await page.getByRole('button', { name: 'Resume reading' }).click();
 
   await expect(
     page.getByRole('region', { name: 'Immersive reading mode' })
@@ -48,6 +48,35 @@ test('renders document paragraphs and returns to editing', async ({ page }) => {
   await expect(page.getByPlaceholder('Paste your text here...')).toHaveValue(
     'First line.\nStill first!\n\nSecond paragraph?'
   );
+});
+
+test('starts immersive mode from a chosen paragraph by pointer or keyboard', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await openDocument(page, 'alpha beta\n\ngamma delta');
+
+  await page.locator('#paragraph-2').evaluate((paragraph) => {
+    const selection = window.getSelection();
+    const range = document.createRange();
+    range.selectNodeContents(paragraph);
+    selection.removeAllRanges();
+    selection.addRange(range);
+  });
+  await expect(
+    page.getByRole('article', { name: 'Document content' })
+  ).toBeVisible();
+
+  await page.getByRole('button', { name: 'Immerse from paragraph 2' }).click();
+  await expect(page.getByTestId('current-word')).toHaveText('gamma');
+  await page.keyboard.press('Escape');
+
+  const firstParagraphAction = page.getByRole('button', {
+    name: 'Immerse from paragraph 1',
+  });
+  await firstParagraphAction.focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByTestId('current-word')).toHaveText('alpha');
 });
 
 test('exits immersive mode during the countdown', async ({ page }) => {
@@ -82,7 +111,7 @@ test('shares reading position between document and immersive modes', async ({
   await expect(currentParagraph).toHaveAttribute('id', 'paragraph-2');
   await expect(currentParagraph).toHaveAttribute('data-token-offset', '3');
 
-  await page.getByRole('button', { name: 'Immerse' }).click();
+  await page.getByRole('button', { name: 'Resume reading' }).click();
   await expect(page.getByTestId('current-word')).toHaveText('six');
 });
 

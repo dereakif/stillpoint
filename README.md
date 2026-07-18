@@ -40,7 +40,7 @@ Open the local URL printed by Vite.
 
 1. Paste or type text into the document editor.
 2. Select **Read document** to open the rendered reading view.
-3. Select **Immerse**.
+3. Select **Resume reading**, or use a paragraph's **Immerse from here** action to begin at that paragraph.
 4. Wait for the countdown to finish.
 5. Use the on-screen controls or keyboard shortcuts to control playback.
 6. Select **Exit** or press `Escape` to return to the document view.
@@ -59,6 +59,12 @@ Open the local URL printed by Vite.
 | `Escape`      | Exit immersive mode                                           |
 
 Clipboard access depends on browser support, page security, and user permission. It generally works on `localhost` and secure HTTPS pages.
+
+### Immersive entry semantics
+
+Paragraph text remains selectable and never activates immersive mode by itself. Each paragraph has a separate keyboard-accessible **Immerse from here** action that starts at token offset `0`. **Resume reading** starts at the shared current position.
+
+Structured headings are planned for Phase 2. When introduced, heading clicks will remain navigation actions; immersive entry associated with a heading will begin at the following readable paragraph rather than displaying the heading as the first RSVP token.
 
 ### Playback semantics
 

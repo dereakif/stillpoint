@@ -100,13 +100,13 @@ Suggested initial shape:
 
 ## Entering immersive mode
 
-- [ ] Let the reader start from the beginning of a paragraph.
-- [ ] Add an **Immerse from here** action.
-- [ ] Add a persistent **Resume reading** action.
-- [ ] Start RSVP at the selected document position.
-- [ ] Decide whether heading clicks start at the heading or the following paragraph.
-- [ ] Prevent accidental immersive activation while selecting text.
-- [ ] Ensure paragraph entry works with keyboard navigation.
+- [x] Let the reader start from the beginning of a paragraph.
+- [x] Add an **Immerse from here** action.
+- [x] Add a persistent **Resume reading** action.
+- [x] Start RSVP at the selected document position.
+- [x] Decide whether heading clicks start at the heading or the following paragraph.
+- [x] Prevent accidental immersive activation while selecting text.
+- [x] Ensure paragraph entry works with keyboard navigation.
 
 ## Exiting immersive mode
 

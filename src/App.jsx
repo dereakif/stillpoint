@@ -14,8 +14,9 @@ function App() {
     setMode('document');
   };
 
-  const startReading = () => {
+  const startReading = (position = readingPosition) => {
     if (!text.trim()) return;
+    if (position) setReadingPosition(position);
     setMode('immersive');
   };
 
