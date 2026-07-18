@@ -25,8 +25,8 @@ const Toolbar = ({ engineRef }) => {
   };
 
   return (
-    <>
-      <div className="pb-20 flex flex-col items-center">
+    <div className="absolute bottom-5 left-1/2 z-30 -translate-x-1/2">
+      <div className="mb-5 flex flex-col items-center">
         <div className="mb-5 flex items-center justify-center gap-3">
           <button
             type="button"
@@ -77,46 +77,44 @@ const Toolbar = ({ engineRef }) => {
       </div>
 
       <KeyboardHints wpm={wpm} />
-    </>
+    </div>
   );
 };
 
 const KeyboardHints = ({ wpm }) => {
   return (
-    <div className="pointer-events-none absolute bottom-5 left-1/2 z-30 -translate-x-1/2">
-      <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 rounded-xl border border-base-300 bg-base-100/80 px-4 py-3 text-xs text-base-content/60 shadow-sm backdrop-blur-md">
-        <span className="flex items-center gap-2">
-          <kbd className="kbd kbd-sm">←</kbd>
-          Rewind
-        </span>
+    <div className="pointer-events-none flex flex-wrap items-center justify-center gap-x-5 gap-y-2 rounded-xl border border-base-300 bg-base-100/80 px-4 py-3 text-xs text-base-content/60 shadow-sm backdrop-blur-md">
+      <span className="flex items-center gap-2">
+        <kbd className="kbd kbd-sm">←</kbd>
+        Rewind
+      </span>
 
-        <span className="flex items-center gap-2">
-          <kbd className="kbd kbd-sm">→</kbd>
-          Forward
-        </span>
+      <span className="flex items-center gap-2">
+        <kbd className="kbd kbd-sm">→</kbd>
+        Forward
+      </span>
 
-        <span className="flex items-center gap-2">
-          <kbd className="kbd kbd-sm">↑</kbd>
-          Faster
-        </span>
+      <span className="flex items-center gap-2">
+        <kbd className="kbd kbd-sm">↑</kbd>
+        Faster
+      </span>
 
-        <span className="flex items-center gap-2">
-          <kbd className="kbd kbd-sm">↓</kbd>
-          Slower
-        </span>
+      <span className="flex items-center gap-2">
+        <kbd className="kbd kbd-sm">↓</kbd>
+        Slower
+      </span>
 
-        <span className="flex items-center gap-2">
-          <kbd className="kbd kbd-sm">Esc</kbd>
-          Exit
-        </span>
+      <span className="flex items-center gap-2">
+        <kbd className="kbd kbd-sm">Esc</kbd>
+        Exit
+      </span>
 
-        <span className="flex items-center gap-2">
-          <kbd className="kbd kbd-sm">C</kbd>
-          Continue
-        </span>
+      <span className="flex items-center gap-2">
+        <kbd className="kbd kbd-sm">C</kbd>
+        Continue
+      </span>
 
-        <span className="font-mono text-base-content/80">{wpm} WPM</span>
-      </div>
+      <span className="font-mono text-base-content/80">{wpm} WPM</span>
     </div>
   );
 };
