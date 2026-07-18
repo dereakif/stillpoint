@@ -2,6 +2,7 @@ import { useRef, useState, useEffect } from 'react';
 import { createDocumentModel, createRSVPPlayer } from '../utils';
 import WordDisplay from './WordDisplay';
 import Toolbar from './Toolbar';
+import ChapterBoundary from './ChapterBoundary';
 
 const RSVPReader = ({
   document,
@@ -20,6 +21,7 @@ const RSVPReader = ({
   const [countdown, setCountdown] = useState(3);
   const [isReady, setIsReady] = useState(false);
   const [isEntered, setIsEntered] = useState(false);
+  const [chapterBoundary, setChapterBoundary] = useState(null);
 
   if (engineRef.current === null) {
     engineRef.current = createRSVPPlayer(document, {
@@ -101,6 +103,7 @@ const RSVPReader = ({
       });
 
       onDocumentChange(newDocument);
+      setChapterBoundary(null);
       engineRef.current.loadDocument(newDocument);
       startCountdown();
     } catch (error) {
@@ -110,7 +113,19 @@ const RSVPReader = ({
 
   useEffect(() => {
     const engine = engineRef.current;
-    return engine.subscribe('positionChange', onReadingPositionChange);
+    const unsubscribePosition = engine.subscribe(
+      'positionChange',
+      onReadingPositionChange
+    );
+    const unsubscribeChapterComplete = engine.subscribe(
+      'chapterComplete',
+      setChapterBoundary
+    );
+
+    return () => {
+      unsubscribePosition();
+      unsubscribeChapterComplete();
+    };
   }, [onReadingPositionChange]);
 
   useEffect(() => {
@@ -137,7 +152,8 @@ const RSVPReader = ({
       const isFormControl =
         target instanceof HTMLInputElement ||
         target instanceof HTMLTextAreaElement ||
-        target instanceof HTMLSelectElement;
+        target instanceof HTMLSelectElement ||
+        target instanceof HTMLButtonElement;
 
       if (event.key === 'Escape') {
         event.preventDefault();
@@ -240,7 +256,17 @@ const RSVPReader = ({
         </div>
       )}
 
-      {isReady && <Toolbar engineRef={engineRef} />}
+      {chapterBoundary && (
+        <ChapterBoundary
+          boundary={chapterBoundary}
+          onContinue={() => {
+            setChapterBoundary(null);
+            engineRef.current.continueToNextChapter();
+          }}
+        />
+      )}
+
+      {isReady && !chapterBoundary && <Toolbar engineRef={engineRef} />}
     </section>
   );
 };

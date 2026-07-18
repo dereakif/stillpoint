@@ -284,6 +284,72 @@ test('navigates and immerses by chapter from the table of contents', async ({
   await expect(page.getByTestId('current-word')).toHaveText('Learn');
 });
 
+test('pauses at a chapter boundary and shows the next chapter before continuing', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await page.clock.install();
+  await openDocument(page, '# One\n\nalpha\n\n# Two\n\nbeta');
+
+  await page.getByRole('button', { name: 'Immerse from paragraph 2' }).click();
+  await expect(page.getByTestId('current-word')).toHaveText('alpha');
+  await expect(page.getByTestId('reading-progress')).toHaveAttribute(
+    'style',
+    /width: 50%/
+  );
+  await expect(page.getByTestId('chapter-progress')).toHaveAttribute(
+    'style',
+    /width: 100%/
+  );
+  await expect(page.getByTestId('chapter-progress-status')).toContainText(
+    'One · 100%'
+  );
+
+  await page.clock.fastForward(4500);
+
+  const boundaryDialog = page.getByRole('dialog', { name: 'Chapter complete' });
+  await expect(boundaryDialog).toBeVisible();
+  await expect(boundaryDialog).toContainText('One');
+  await expect(page.getByTestId('next-chapter-title')).toHaveText('Two');
+  const continueButton = page.getByRole('button', {
+    name: 'Continue to next chapter',
+  });
+  await expect(continueButton).toBeFocused();
+  await expect(page.getByRole('button', { name: 'Play' })).toHaveCount(0);
+
+  await continueButton.click();
+  await expect(boundaryDialog).toHaveCount(0);
+  await expect(page.getByTestId('current-word')).toHaveText('Two');
+  await expect(page.getByTestId('chapter-progress-status')).toContainText(
+    'Two · 50%'
+  );
+  await expect(page.getByTestId('chapter-progress')).toHaveAttribute(
+    'style',
+    /width: 50%/
+  );
+});
+
+test('returns to the completed chapter position from a boundary', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await page.clock.install();
+  await openDocument(page, '# One\n\nalpha\n\n# Two\n\nbeta');
+  await page.getByRole('button', { name: 'Immerse from paragraph 2' }).click();
+  await page.clock.fastForward(4500);
+  await expect(
+    page.getByRole('dialog', { name: 'Chapter complete' })
+  ).toBeVisible();
+
+  await page.getByRole('button', { name: 'Exit' }).click();
+  const returnToken = page.getByTestId('return-word-highlight');
+  await expect(returnToken).toHaveText('alpha');
+  await expect(page.locator('#paragraph-2')).toHaveAttribute(
+    'data-position-marker',
+    'current-block'
+  );
+});
+
 test('uses an accessible contents drawer on tablet and mobile widths', async ({
   page,
 }) => {

@@ -268,22 +268,22 @@ Navigation mode should support scrolling, skimming, searching, and choosing wher
 
 ## Chapter-aware playback
 
-- [ ] Mark chapter boundaries in the reading-position model.
-- [ ] Detect when immersive playback reaches the end of a chapter.
-- [ ] Prevent chapter-boundary prompts from being triggered more than once.
-- [ ] Keep rewind and forward behavior correct across chapter boundaries.
-- [ ] Show the next chapter title before continuing.
-- [ ] Calculate chapter and document progress separately.
+- [x] Mark chapter boundaries in the reading-position model.
+- [x] Detect when immersive playback reaches the end of a chapter.
+- [x] Prevent chapter-boundary prompts from being triggered more than once.
+- [x] Keep rewind and forward behavior correct across chapter boundaries.
+- [x] Show the next chapter title before continuing.
+- [x] Calculate chapter and document progress separately.
 
 ## Chapter completion prompt
 
-- [ ] Design a calm chapter-complete interstitial.
-- [ ] Show the completed chapter title.
+- [x] Design a calm chapter-complete interstitial.
+- [x] Show the completed chapter title.
 - [ ] Show optional session information such as reading time and words read.
-- [ ] Add **Continue to next chapter**.
+- [x] Add **Continue to next chapter**.
 - [ ] Add **Return to document**.
 - [ ] Add **Review chapter** if it is meaningfully different from returning.
-- [ ] Support keyboard selection.
+- [x] Support keyboard selection.
 - [ ] Restore the correct position after either choice.
 
 ## Completion behavior settings

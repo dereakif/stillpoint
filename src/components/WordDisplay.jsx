@@ -9,6 +9,8 @@ const WordDisplay = ({ engineRef }) => {
   const pivotRef = useRef(null);
   const afterRef = useRef(null);
   const progressRef = useRef(null);
+  const chapterProgressRef = useRef(null);
+  const chapterLabelRef = useRef(null);
 
   useEffect(() => {
     const engine = engineRef.current;
@@ -62,18 +64,54 @@ const WordDisplay = ({ engineRef }) => {
       }
     };
 
+    const handleChapterProgress = (chapter) => {
+      if (!chapter) return;
+
+      if (chapterProgressRef.current) {
+        chapterProgressRef.current.style.width = `${chapter.progress * 100}%`;
+      }
+      if (chapterLabelRef.current) {
+        const chapterTitle = chapter.title || `Section ${chapter.number}`;
+        chapterLabelRef.current.textContent = `${chapterTitle} · ${Math.round(
+          chapter.progress * 100
+        )}%`;
+      }
+    };
+
     const unsubscribeWord = engine.subscribe('word', handleWord);
     const unsubscribeProgress = engine.subscribe('progress', handleProgress);
+    const unsubscribeChapterProgress = engine.subscribe(
+      'chapterProgress',
+      handleChapterProgress
+    );
 
     return () => {
       unsubscribeWord();
       unsubscribeProgress();
+      unsubscribeChapterProgress();
     };
   }, [engineRef]);
 
   return (
     <div className="flex flex-1 items-center justify-center px-4 py-12">
       <div className="w-full max-w-5xl">
+        <div
+          data-testid="chapter-progress-status"
+          className="mb-3 px-1 text-xs text-base-content/55"
+        >
+          <div className="mb-1 flex items-center justify-between gap-4">
+            <span>Chapter progress</span>
+            <span ref={chapterLabelRef}>Section 1 · 0%</span>
+          </div>
+          <div className="h-1 overflow-hidden rounded-full bg-base-300/70">
+            <div
+              ref={chapterProgressRef}
+              data-testid="chapter-progress"
+              className="h-full w-0 bg-primary/55 transition-[width] duration-200 ease-linear motion-reduce:transition-none"
+            />
+          </div>
+        </div>
+
         <div className="rounded-xl bg-card text-card-foreground shadow-2xl">
           <div data-testid="word-viewport" className="relative overflow-hidden">
             <div className="absolute inset-y-0 left-0 w-full bg-primary/5 rounded-xl" />

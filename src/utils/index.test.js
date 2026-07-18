@@ -464,6 +464,114 @@ describe('createRSVPPlayer', () => {
     expect(player.getState().position).toEqual({
       blockId: 'paragraph-2',
       tokenOffset: 0,
+      sectionId: 'section-1',
+    });
+  });
+
+  test('pauses once at a chapter boundary and continues into the next chapter', async () => {
+    const document = createDocumentModel('# One\n\nalpha\n\n# Two\n\nbeta');
+    const player = createRSVPPlayer(document, { baseWpm: 800 });
+    const words = [];
+    let promptCount = 0;
+    const boundaryReached = new Promise((resolve) => {
+      player.subscribe('chapterComplete', (boundary) => {
+        promptCount += 1;
+        resolve(boundary);
+      });
+    });
+
+    player.subscribe('word', (token) => words.push(token.text));
+    player.play();
+    const boundary = await boundaryReached;
+
+    expect(words).toEqual(['One', 'alpha']);
+    expect(player.isPlaying()).toBe(false);
+    expect(boundary.completedChapter.title).toBe('One');
+    expect(boundary.nextChapter.title).toBe('Two');
+    expect(boundary.nextPosition).toEqual({
+      blockId: 'paragraph-3',
+      tokenOffset: 0,
+      sectionId: 'section-2',
+    });
+    expect(player.getPendingChapterBoundary()).toEqual(boundary);
+
+    player.continueToNextChapter();
+    expect(words).toEqual(['One', 'alpha', 'Two']);
+    expect(player.getState().position).toEqual(boundary.nextPosition);
+    expect(promptCount).toBe(1);
+    player.pause();
+  });
+
+  test('does not prompt twice after rewinding across a completed boundary', async () => {
+    const document = createDocumentModel('# One\n\nalpha\n\n# Two\n\nbeta');
+    const player = createRSVPPlayer(document, { baseWpm: 800 });
+    let promptCount = 0;
+    const firstBoundary = new Promise((resolve) => {
+      player.subscribe('chapterComplete', (boundary) => {
+        promptCount += 1;
+        resolve(boundary);
+      });
+    });
+
+    player.play();
+    await firstBoundary;
+    player.rewind(1);
+
+    const completed = new Promise((resolve) => {
+      player.subscribe('complete', resolve);
+    });
+    player.play();
+    await completed;
+
+    expect(promptCount).toBe(1);
+  });
+
+  test('keeps direct navigation correct across chapter boundaries', async () => {
+    const document = createDocumentModel('# One\n\nalpha\n\n# Two\n\nbeta');
+    const player = createRSVPPlayer(document, { baseWpm: 800 });
+    const boundaryReached = new Promise((resolve) => {
+      player.subscribe('chapterComplete', resolve);
+    });
+
+    player.play();
+    await boundaryReached;
+    player.skipForward(5);
+    expect(player.getState().position).toEqual({
+      blockId: 'paragraph-4',
+      tokenOffset: 0,
+      sectionId: 'section-2',
+    });
+    expect(player.getPendingChapterBoundary()).toBeNull();
+
+    player.rewind(100);
+    expect(player.getState().position).toEqual({
+      blockId: 'paragraph-1',
+      tokenOffset: 0,
+      sectionId: 'section-1',
+    });
+  });
+
+  test('reports chapter and document progress separately', () => {
+    const document = createDocumentModel('# One\n\nalpha\n\n# Two\n\nbeta');
+    const player = createRSVPPlayer(document);
+    const documentProgress = [];
+    const chapterProgress = [];
+
+    player.subscribe('progress', (progress) => documentProgress.push(progress));
+    player.subscribe('chapterProgress', (chapter) =>
+      chapterProgress.push(chapter.progress)
+    );
+    player.preview();
+    player.skipForward(2);
+
+    expect(documentProgress).toEqual([1 / 4, 3 / 4]);
+    expect(chapterProgress).toEqual([1 / 2, 1 / 2]);
+    expect(player.getChapterState()).toEqual({
+      id: 'section-2',
+      title: 'Two',
+      number: 2,
+      count: 2,
+      progress: 1 / 2,
     });
   });
 

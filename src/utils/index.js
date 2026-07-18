@@ -20,10 +20,11 @@
  * @typedef {object} ReadingPosition
  * @property {string} blockId
  * @property {number} tokenOffset
+ * @property {string} [sectionId]
  */
 
 /**
- * @typedef {'word' | 'progress' | 'positionChange' | 'complete' | 'playStateChange' | 'wpmChange'} RSVPPlayerEvent
+ * @typedef {'word' | 'progress' | 'positionChange' | 'complete' | 'playStateChange' | 'wpmChange' | 'chapterProgress' | 'chapterComplete'} RSVPPlayerEvent
  */
 
 /**
@@ -521,7 +522,11 @@ export const tokenIndexToPosition = (tokens, index) => {
   if (!tokens.length) return null;
 
   const token = tokens[Math.max(0, Math.min(tokens.length - 1, index))];
-  return { blockId: token.blockId, tokenOffset: token.tokenOffset };
+  return {
+    blockId: token.blockId,
+    tokenOffset: token.tokenOffset,
+    ...(token.sectionId ? { sectionId: token.sectionId } : {}),
+  };
 };
 
 /**
@@ -633,6 +638,16 @@ export const createRSVPPlayer = (
   let timerId = null;
   let playing = false;
   let wpm = baseWpm;
+  let chapterDefinitions =
+    typeof content === 'string'
+      ? []
+      : (content.sections ?? [])
+          .filter((section) =>
+            tokens.some((token) => token.sectionId === section.id)
+          )
+          .map((section) => ({ id: section.id, title: section.title }));
+  let pendingChapterBoundary = null;
+  const promptedChapterBoundaries = new Set();
 
   const listeners = {
     word: new Set(),
@@ -641,6 +656,8 @@ export const createRSVPPlayer = (
     complete: new Set(),
     playStateChange: new Set(),
     wpmChange: new Set(),
+    chapterProgress: new Set(),
+    chapterComplete: new Set(),
   };
 
   const emit = (event, value) => {
@@ -669,11 +686,70 @@ export const createRSVPPlayer = (
     return () => eventListeners.delete(listener);
   };
 
+  const getChapterState = (tokenIndex = index) => {
+    if (!tokens.length) return null;
+
+    const safeIndex = Math.max(0, Math.min(tokens.length - 1, tokenIndex));
+    const token = tokens[safeIndex];
+    const chapterIndex = chapterDefinitions.findIndex(
+      (chapter) => chapter.id === token.sectionId
+    );
+
+    if (chapterIndex === -1) {
+      return {
+        id: null,
+        title: null,
+        number: 1,
+        count: 1,
+        progress: (safeIndex + 1) / tokens.length,
+      };
+    }
+
+    const chapter = chapterDefinitions[chapterIndex];
+    const chapterTokenIndices = tokens
+      .map((candidate, candidateIndex) =>
+        candidate.sectionId === chapter.id ? candidateIndex : -1
+      )
+      .filter((candidateIndex) => candidateIndex !== -1);
+    const chapterStart = chapterTokenIndices[0];
+
+    return {
+      id: chapter.id,
+      title: chapter.title,
+      number: chapterIndex + 1,
+      count: chapterDefinitions.length,
+      progress: (safeIndex - chapterStart + 1) / chapterTokenIndices.length,
+    };
+  };
+
+  const getChapterBoundaryAfter = (tokenIndex) => {
+    if (tokenIndex >= tokens.length - 1) return null;
+
+    const completedChapter = getChapterState(tokenIndex);
+    const nextChapter = getChapterState(tokenIndex + 1);
+    if (
+      !completedChapter?.id ||
+      !nextChapter?.id ||
+      completedChapter.id === nextChapter.id
+    ) {
+      return null;
+    }
+
+    return {
+      id: `${completedChapter.id}->${nextChapter.id}`,
+      completedChapter,
+      nextChapter,
+      nextIndex: tokenIndex + 1,
+      nextPosition: tokenIndexToPosition(tokens, tokenIndex + 1),
+    };
+  };
+
   const emitCurrentToken = () => {
     if (!tokens.length || index >= tokens.length) return;
 
     emit('word', tokens[index]);
     emit('progress', (index + 1) / tokens.length);
+    emit('chapterProgress', getChapterState(index));
     emit('positionChange', tokenIndexToPosition(tokens, index));
   };
 
@@ -691,6 +767,20 @@ export const createRSVPPlayer = (
     emitCurrentToken();
     const duration = computeWordDuration(token, wpm);
     timerId = setTimeout(() => {
+      const chapterBoundary = getChapterBoundaryAfter(index);
+
+      if (
+        chapterBoundary &&
+        !promptedChapterBoundaries.has(chapterBoundary.id)
+      ) {
+        promptedChapterBoundaries.add(chapterBoundary.id);
+        pendingChapterBoundary = chapterBoundary;
+        playing = false;
+        emit('playStateChange', false);
+        emit('chapterComplete', chapterBoundary);
+        return;
+      }
+
       index += 1;
       scheduleNext();
     }, duration);
@@ -698,6 +788,7 @@ export const createRSVPPlayer = (
 
   const jumpTo = (newIndex) => {
     player.pause();
+    pendingChapterBoundary = null;
     if (!tokens.length) return;
 
     index = Math.max(0, Math.min(tokens.length - 1, newIndex));
@@ -710,6 +801,9 @@ export const createRSVPPlayer = (
     player.pause();
 
     tokens = tokenize(newText);
+    chapterDefinitions = [];
+    pendingChapterBoundary = null;
+    promptedChapterBoundaries.clear();
     index = 0;
   };
 
@@ -717,11 +811,23 @@ export const createRSVPPlayer = (
     player.pause();
 
     tokens = documentModel.tokens;
+    chapterDefinitions = documentModel.sections
+      .filter((section) =>
+        tokens.some((token) => token.sectionId === section.id)
+      )
+      .map((section) => ({ id: section.id, title: section.title }));
+    pendingChapterBoundary = null;
+    promptedChapterBoundaries.clear();
     index = 0;
   };
 
   player.play = () => {
     if (playing || !tokens.length) return;
+
+    if (pendingChapterBoundary) {
+      index = pendingChapterBoundary.nextIndex;
+      pendingChapterBoundary = null;
+    }
 
     if (index >= tokens.length) {
       index = 0;
@@ -738,6 +844,14 @@ export const createRSVPPlayer = (
     emit('playStateChange', false);
   };
 
+  player.continueToNextChapter = () => {
+    if (!pendingChapterBoundary) return;
+    player.play();
+  };
+
+  player.getPendingChapterBoundary = () => pendingChapterBoundary;
+  player.getChapterState = () => getChapterState();
+
   player.playToggle = () => {
     if (playing) {
       player.pause();
@@ -748,12 +862,14 @@ export const createRSVPPlayer = (
 
   player.reset = () => {
     player.pause();
+    pendingChapterBoundary = null;
     index = 0;
     emitCurrentToken();
   };
 
   player.restart = () => {
     player.pause();
+    pendingChapterBoundary = null;
     index = 0;
     player.play();
   };
