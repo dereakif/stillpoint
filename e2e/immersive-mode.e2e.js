@@ -38,6 +38,33 @@ test('exits immersive mode during the countdown', async ({ page }) => {
   ).toHaveCount(0);
 });
 
+test('supports immersive keyboard controls', async ({ page }) => {
+  await page.goto('/');
+  await page.clock.install();
+  await enterImmersiveMode(page, 'alpha beta gamma delta epsilon zeta');
+  await page.clock.fastForward(3000);
+
+  const currentWord = page.getByTestId('current-word');
+
+  await page.keyboard.press('ArrowRight');
+  await expect(currentWord).toHaveText('zeta');
+
+  await page.keyboard.press('ArrowLeft');
+  await expect(currentWord).toHaveText('alpha');
+
+  const speedSlider = page.getByRole('slider', { name: 'Reading speed' });
+
+  await page.keyboard.press('ArrowUp');
+  await expect(speedSlider).toHaveValue('310');
+  await page.keyboard.press('ArrowDown');
+  await expect(speedSlider).toHaveValue('300');
+
+  await page.keyboard.press('Space');
+  await expect(page.getByRole('button', { name: 'Pause' })).toBeVisible();
+  await page.keyboard.press('Space');
+  await expect(page.getByRole('button', { name: 'Play' })).toBeVisible();
+});
+
 test('does not restart playback after exiting before delayed play', async ({
   page,
 }) => {

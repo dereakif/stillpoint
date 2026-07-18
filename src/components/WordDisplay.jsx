@@ -22,6 +22,7 @@ const WordDisplay = ({ engineRef }) => {
       if (!wrapper || !beforeElement || !pivotElement || !afterElement) return;
 
       const { before, pivot, after } = splitAtORP(token.text);
+      wrapper.setAttribute('aria-label', token.text);
       beforeElement.textContent = before;
       pivotElement.textContent = pivot;
       afterElement.textContent = after;
@@ -87,6 +88,9 @@ const WordDisplay = ({ engineRef }) => {
             <div className="relative z-10 flex min-h-40 items-center md:min-h-80">
               <div
                 ref={wrapperRef}
+                role="status"
+                aria-live="polite"
+                data-testid="current-word"
                 className="relative flex w-full whitespace-nowrap font-mono text-3xl font-bold tracking-wider md:text-7xl"
               >
                 <span
