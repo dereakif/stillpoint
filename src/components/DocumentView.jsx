@@ -1,7 +1,7 @@
 import { Edit3, Play } from 'lucide-react';
 import { createDocumentParagraphs } from '../utils';
 
-const DocumentView = ({ text, onEdit, onStartReading }) => {
+const DocumentView = ({ text, readingPosition, onEdit, onStartReading }) => {
   const paragraphs = createDocumentParagraphs(text);
 
   if (!paragraphs.length) {
@@ -47,15 +47,25 @@ const DocumentView = ({ text, onEdit, onStartReading }) => {
         aria-label="Document content"
         className="space-y-6 text-lg leading-8 text-base-content/90 sm:text-xl sm:leading-9"
       >
-        {paragraphs.map((paragraph) => (
-          <p
-            key={paragraph.id}
-            id={paragraph.id}
-            className="whitespace-pre-line scroll-mt-8"
-          >
-            {paragraph.text}
-          </p>
-        ))}
+        {paragraphs.map((paragraph) => {
+          const isCurrent = paragraph.id === readingPosition?.blockId;
+
+          return (
+            <p
+              key={paragraph.id}
+              id={paragraph.id}
+              aria-current={isCurrent ? 'location' : undefined}
+              data-token-offset={
+                isCurrent ? readingPosition.tokenOffset : undefined
+              }
+              className={`scroll-mt-8 whitespace-pre-line rounded-lg transition-colors motion-reduce:transition-none ${
+                isCurrent ? 'bg-primary/5 ring-1 ring-primary/20' : ''
+              }`}
+            >
+              {paragraph.text}
+            </p>
+          );
+        })}
       </article>
     </section>
   );

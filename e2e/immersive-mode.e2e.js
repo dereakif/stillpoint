@@ -66,6 +66,26 @@ test('exits immersive mode during the countdown', async ({ page }) => {
   ).toHaveCount(0);
 });
 
+test('shares reading position between document and immersive modes', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await page.clock.install();
+  await enterImmersiveMode(page, 'one two\n\nthree four five six');
+  await page.clock.fastForward(3000);
+
+  await page.keyboard.press('ArrowRight');
+  await expect(page.getByTestId('current-word')).toHaveText('six');
+  await page.keyboard.press('Escape');
+
+  const currentParagraph = page.locator('p[aria-current="location"]');
+  await expect(currentParagraph).toHaveAttribute('id', 'paragraph-2');
+  await expect(currentParagraph).toHaveAttribute('data-token-offset', '3');
+
+  await page.getByRole('button', { name: 'Immerse' }).click();
+  await expect(page.getByTestId('current-word')).toHaveText('six');
+});
+
 test('supports immersive keyboard controls', async ({ page }) => {
   await page.goto('/');
   await page.clock.install();

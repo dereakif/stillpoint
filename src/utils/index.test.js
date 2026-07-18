@@ -5,7 +5,9 @@ import {
   createDocumentParagraphs,
   createRSVPPlayer,
   normalizeText,
+  positionToTokenIndex,
   splitAtORP,
+  tokenIndexToPosition,
   tokenize,
 } from './index';
 
@@ -88,6 +90,8 @@ describe('tokenize', () => {
       isSentenceEnd: false,
       isCommaPause: false,
       isParagraphEnd: false,
+      blockId: 'paragraph-1',
+      tokenOffset: 0,
     });
   });
 
@@ -117,6 +121,39 @@ describe('tokenize', () => {
         isSlashPart: false,
       }),
     ]);
+  });
+});
+
+describe('reading position conversion', () => {
+  const tokens = tokenize('alpha beta\n\ngamma delta epsilon');
+
+  test('converts a reading position to a flat token index', () => {
+    expect(
+      positionToTokenIndex(tokens, {
+        blockId: 'paragraph-2',
+        tokenOffset: 1,
+      })
+    ).toBe(3);
+  });
+
+  test('converts a flat token index to a reading position', () => {
+    expect(tokenIndexToPosition(tokens, 4)).toEqual({
+      blockId: 'paragraph-2',
+      tokenOffset: 2,
+    });
+  });
+
+  test('clamps invalid offsets and safely handles empty tokens', () => {
+    expect(
+      positionToTokenIndex(tokens, {
+        blockId: 'paragraph-2',
+        tokenOffset: 100,
+      })
+    ).toBe(4);
+    expect(
+      positionToTokenIndex(tokens, { blockId: 'missing', tokenOffset: 0 })
+    ).toBe(0);
+    expect(tokenIndexToPosition([], 0)).toBeNull();
   });
 });
 
@@ -277,6 +314,25 @@ describe('createRSVPPlayer', () => {
     expect(progress).toEqual([1 / 3, 1, 2 / 3]);
   });
 
+  test('starts at and reports shared reading positions', () => {
+    const player = createRSVPPlayer('alpha beta\n\ngamma delta', {
+      initialPosition: { blockId: 'paragraph-2', tokenOffset: 1 },
+    });
+    const words = [];
+    const positions = [];
+
+    player.subscribe('word', (token) => words.push(token.text));
+    player.subscribe('positionChange', (position) => positions.push(position));
+    player.preview();
+    player.setPosition({ blockId: 'paragraph-1', tokenOffset: 1 });
+
+    expect(words).toEqual(['delta', 'beta']);
+    expect(positions).toEqual([
+      { blockId: 'paragraph-2', tokenOffset: 1 },
+      { blockId: 'paragraph-1', tokenOffset: 1 },
+    ]);
+  });
+
   test('supports explicit reset and restart commands', () => {
     const player = createRSVPPlayer('alpha beta');
     const words = [];
@@ -322,6 +378,7 @@ describe('createRSVPPlayer', () => {
       currentIndex: 0,
       tokenCount: 2,
       progress: 0.5,
+      position: { blockId: 'paragraph-1', tokenOffset: 0 },
     });
 
     player.skipForward(1);
@@ -331,6 +388,7 @@ describe('createRSVPPlayer', () => {
       currentIndex: 1,
       tokenCount: 2,
       progress: 1,
+      position: { blockId: 'paragraph-1', tokenOffset: 1 },
     });
 
     player.loadText('');
@@ -340,6 +398,7 @@ describe('createRSVPPlayer', () => {
       currentIndex: null,
       tokenCount: 0,
       progress: 0,
+      position: null,
     });
   });
 

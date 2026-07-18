@@ -81,13 +81,13 @@ Build the central Stillpoint experience: navigating a document and entering or l
 
 ## Shared reading position
 
-- [ ] Introduce a first-class reading-position model.
-- [ ] Track the current paragraph or block ID.
-- [ ] Track the current token offset inside that block.
-- [ ] Move position ownership out of the private RSVP timer closure.
-- [ ] Make navigation mode and immersive mode read from the same position.
-- [ ] Update shared position as RSVP playback advances.
-- [ ] Add tests for position conversion between document blocks and RSVP tokens.
+- [x] Introduce a first-class reading-position model.
+- [x] Track the current paragraph or block ID.
+- [x] Track the current token offset inside that block.
+- [x] Move position ownership out of the private RSVP timer closure.
+- [x] Make navigation mode and immersive mode read from the same position.
+- [x] Update shared position as RSVP playback advances.
+- [x] Add tests for position conversion between document blocks and RSVP tokens.
 
 Suggested initial shape:
 

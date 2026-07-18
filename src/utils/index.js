@@ -8,10 +8,18 @@
  * @property {boolean} isSentenceEnd
  * @property {boolean} isCommaPause
  * @property {boolean} isParagraphEnd
+ * @property {string} blockId
+ * @property {number} tokenOffset
  */
 
 /**
- * @typedef {'word' | 'progress' | 'complete' | 'playStateChange' | 'wpmChange'} RSVPPlayerEvent
+ * @typedef {object} ReadingPosition
+ * @property {string} blockId
+ * @property {number} tokenOffset
+ */
+
+/**
+ * @typedef {'word' | 'progress' | 'positionChange' | 'complete' | 'playStateChange' | 'wpmChange'} RSVPPlayerEvent
  */
 
 /**
@@ -21,6 +29,7 @@
  * @property {number | null} currentIndex
  * @property {number} tokenCount
  * @property {number} progress
+ * @property {ReadingPosition | null} position
  */
 
 const FUNCTION_WORDS = new Set([
@@ -166,6 +175,8 @@ export const tokenize = (rawText) => {
         isCommaPause: /[,;:]["')\]]?$/.test(text),
 
         isParagraphEnd: false,
+        blockId: `paragraph-${paragraphIndex + 1}`,
+        tokenOffset: paragraphTokens.length,
       });
     });
 
@@ -179,6 +190,42 @@ export const tokenize = (rawText) => {
   });
 
   return tokens;
+};
+
+/**
+ * @param {RSVPToken[]} tokens
+ * @param {ReadingPosition | null | undefined} position
+ * @returns {number}
+ */
+export const positionToTokenIndex = (tokens, position) => {
+  if (!tokens.length || !position) return 0;
+
+  const blockStart = tokens.findIndex(
+    (token) => token.blockId === position.blockId
+  );
+  if (blockStart === -1) return 0;
+
+  const blockLength = tokens.filter(
+    (token) => token.blockId === position.blockId
+  ).length;
+  const tokenOffset = Math.max(
+    0,
+    Math.min(blockLength - 1, position.tokenOffset)
+  );
+
+  return blockStart + tokenOffset;
+};
+
+/**
+ * @param {RSVPToken[]} tokens
+ * @param {number} index
+ * @returns {ReadingPosition | null}
+ */
+export const tokenIndexToPosition = (tokens, index) => {
+  if (!tokens.length) return null;
+
+  const token = tokens[Math.max(0, Math.min(tokens.length - 1, index))];
+  return { blockId: token.blockId, tokenOffset: token.tokenOffset };
 };
 
 /**
@@ -236,11 +283,14 @@ export const computeWordDuration = (token, baseWpm, opts = {}) => {
  * Creates an RSVP player with a stable command, state, and event interface.
  *
  * @param {string} text
- * @param {{ baseWpm?: number }} [options]
+ * @param {{ baseWpm?: number, initialPosition?: ReadingPosition | null }} [options]
  */
-export const createRSVPPlayer = (text, { baseWpm = 300 } = {}) => {
+export const createRSVPPlayer = (
+  text,
+  { baseWpm = 300, initialPosition = null } = {}
+) => {
   let tokens = tokenize(text);
-  let index = 0;
+  let index = positionToTokenIndex(tokens, initialPosition);
   let timerId = null;
   let playing = false;
   let wpm = baseWpm;
@@ -248,6 +298,7 @@ export const createRSVPPlayer = (text, { baseWpm = 300 } = {}) => {
   const listeners = {
     word: new Set(),
     progress: new Set(),
+    positionChange: new Set(),
     complete: new Set(),
     playStateChange: new Set(),
     wpmChange: new Set(),
@@ -261,7 +312,7 @@ export const createRSVPPlayer = (text, { baseWpm = 300 } = {}) => {
 
   /**
    * @param {RSVPPlayerEvent} event
-   * @param {(value?: RSVPToken | number | boolean) => void} listener
+   * @param {(value?: RSVPToken | ReadingPosition | number | boolean) => void} listener
    * @returns {() => boolean}
    */
   player.subscribe = (event, listener) => {
@@ -284,6 +335,7 @@ export const createRSVPPlayer = (text, { baseWpm = 300 } = {}) => {
 
     emit('word', tokens[index]);
     emit('progress', (index + 1) / tokens.length);
+    emit('positionChange', tokenIndexToPosition(tokens, index));
   };
 
   const scheduleNext = () => {
@@ -365,6 +417,9 @@ export const createRSVPPlayer = (text, { baseWpm = 300 } = {}) => {
 
   player.isPlaying = () => playing;
 
+  player.setPosition = (position) =>
+    jumpTo(positionToTokenIndex(tokens, position));
+
   player.getState = () => ({
     isPlaying: playing,
     wpm,
@@ -373,6 +428,7 @@ export const createRSVPPlayer = (text, { baseWpm = 300 } = {}) => {
     progress: tokens.length
       ? (Math.min(index, tokens.length - 1) + 1) / tokens.length
       : 0,
+    position: tokenIndexToPosition(tokens, index),
   });
 
   player.setWpm = (newWpm) => {

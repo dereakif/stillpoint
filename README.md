@@ -74,13 +74,15 @@ Clipboard access depends on browser support, page security, and user permission.
 ### Commands and state
 
 - Playback: `play()`, `pause()`, `playToggle()`, `restart()`, and `reset()`
-- Navigation: `preview()`, `rewind(count)`, and `skipForward(count)`
+- Navigation: `preview()`, `rewind(count)`, `skipForward(count)`, and `setPosition(position)`
 - Content and speed: `loadText(text)`, `setWpm(wpm)`, and `getWpm()`
 - State: `isPlaying()` and `getState()`
 
-`getState()` returns a new snapshot containing `isPlaying`, `wpm`, `currentIndex`, `tokenCount`, and `progress`. Empty content uses `currentIndex: null` and `progress: 0`.
+`getState()` returns a new snapshot containing `isPlaying`, `wpm`, `currentIndex`, `tokenCount`, `progress`, and the shared `position`. Empty content uses `currentIndex: null`, `progress: 0`, and `position: null`.
 
-Subscribe with `subscribe(event, listener)`. Supported events are `word`, `progress`, `complete`, `playStateChange`, and `wpmChange`. Every call returns an unsubscribe function, and multiple listeners can observe the same event independently.
+A reading position has the shape `{ blockId, tokenOffset }`, such as `{ blockId: 'paragraph-2', tokenOffset: 4 }`. Document and immersive modes consume the same position, and RSVP navigation or playback updates it.
+
+Subscribe with `subscribe(event, listener)`. Supported events are `word`, `progress`, `positionChange`, `complete`, `playStateChange`, and `wpmChange`. Every call returns an unsubscribe function, and multiple listeners can observe the same event independently.
 
 ## Available commands
 

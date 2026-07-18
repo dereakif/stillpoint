@@ -3,7 +3,13 @@ import { createRSVPPlayer } from '../utils';
 import WordDisplay from './WordDisplay';
 import Toolbar from './Toolbar';
 
-const RSVPReader = ({ text, setText, onExit }) => {
+const RSVPReader = ({
+  text,
+  setText,
+  readingPosition,
+  onReadingPositionChange,
+  onExit,
+}) => {
   const engineRef = useRef(null);
   const readerRef = useRef(null);
   const countdownTimerRef = useRef(null);
@@ -15,6 +21,7 @@ const RSVPReader = ({ text, setText, onExit }) => {
   if (engineRef.current === null) {
     engineRef.current = createRSVPPlayer(text, {
       baseWpm: 300,
+      initialPosition: readingPosition,
     });
   }
 
@@ -82,6 +89,11 @@ const RSVPReader = ({ text, setText, onExit }) => {
       console.log(error);
     }
   };
+
+  useEffect(() => {
+    const engine = engineRef.current;
+    return engine.subscribe('positionChange', onReadingPositionChange);
+  }, [onReadingPositionChange]);
 
   useEffect(() => {
     readerRef.current?.focus();

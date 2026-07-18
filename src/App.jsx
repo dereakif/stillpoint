@@ -6,9 +6,11 @@ import DocumentView from './components/DocumentView';
 function App() {
   const [text, setText] = useState('');
   const [mode, setMode] = useState('edit');
+  const [readingPosition, setReadingPosition] = useState(null);
 
   const saveDocument = (newText) => {
     setText(newText);
+    setReadingPosition({ blockId: 'paragraph-1', tokenOffset: 0 });
     setMode('document');
   };
 
@@ -34,13 +36,20 @@ function App() {
       {mode === 'document' && (
         <DocumentView
           text={text}
+          readingPosition={readingPosition}
           onEdit={() => setMode('edit')}
           onStartReading={startReading}
         />
       )}
 
       {mode === 'immersive' && (
-        <RSVPReader text={text} setText={setText} onExit={exitReading} />
+        <RSVPReader
+          text={text}
+          setText={setText}
+          readingPosition={readingPosition}
+          onReadingPositionChange={setReadingPosition}
+          onExit={exitReading}
+        />
       )}
     </main>
   );
