@@ -48,7 +48,7 @@ Open the local URL printed by Vite.
 5. Select an exact word, activate a paragraph or heading, choose **Resume**, or immerse a chapter from the contents list.
 6. Wait for the countdown to finish.
 7. Use the on-screen controls or keyboard shortcuts to control playback.
-8. Select **Exit** or press `Escape` to return to the exact reading position in the document view.
+8. Select **Exit** or press `Escape` to return with the exact token centered and briefly highlighted in the document view.
 9. Select **Edit document** whenever you want to change the Markdown source.
 
 ### Keyboard shortcuts
@@ -70,6 +70,8 @@ Clipboard access depends on browser support, page security, and user permission.
 Paragraph text remains selectable and never activates immersive mode by itself. Each paragraph has a separate keyboard-accessible **Immerse from here** action that starts at token offset `0`. **Resume reading** starts at the shared current position.
 
 Selecting a word begins at that exact token. Selecting a paragraph's open reading surface begins at its first token, while its visible **Immerse from here** action provides the same behavior. Selecting a heading begins at the following readable block rather than displaying the heading as the first RSVP token.
+
+Returning from immersive mode centers and focuses the exact current token where document boundaries allow. A restrained glow fades after roughly one second while the permanent block-level position marker remains. Reduced-motion mode keeps a static exact-token indication during that interval.
 
 For keyboard entry, one word at a time participates in the tab order. Focus it and use `Left Arrow` or `Right Arrow` to choose a nearby word, then press `Enter` or `Space` to immerse from that token. Paragraph and heading actions remain ordinary keyboard-accessible buttons. Selecting document text never triggers immersive mode.
 

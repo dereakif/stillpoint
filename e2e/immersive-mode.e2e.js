@@ -442,7 +442,8 @@ test('connects the selected paragraph through entry and return transitions', asy
   await expect(documentView).toHaveAttribute('aria-hidden', 'false');
 
   const currentParagraph = page.locator('#paragraph-2');
-  await expect(currentParagraph).toBeFocused();
+  const currentToken = page.getByTestId('return-word-highlight');
+  await expect(currentToken).toBeFocused();
   await expect(currentParagraph).toHaveAttribute('data-token-offset', '0');
 
   await page.keyboard.press('ArrowRight');
@@ -484,18 +485,35 @@ test('shares reading position between document and immersive modes', async ({
   const currentParagraph = page.locator('p[aria-current="location"]');
   await expect(currentParagraph).toHaveAttribute('id', 'paragraph-2');
   await expect(currentParagraph).toHaveAttribute('data-token-offset', '3');
-  await expect(currentParagraph).toBeFocused();
-  await expect(page.getByTestId('return-word-highlight')).toHaveText('six');
+  await expect(currentParagraph).toHaveAttribute(
+    'data-position-marker',
+    'current-block'
+  );
 
-  await page.clock.fastForward(2500);
+  const returnToken = page.getByTestId('return-word-highlight');
+  await expect(returnToken).toHaveText('six');
+  await expect(returnToken).toBeFocused();
+  await expect(returnToken).toHaveAttribute(
+    'data-highlight-kind',
+    'return-position'
+  );
+  await expect(returnToken).toHaveCSS('animation-duration', '1.1s');
+
+  await page.clock.fastForward(1200);
   await expect(page.getByTestId('return-word-highlight')).toHaveCount(0);
   await expect(currentParagraph).toHaveAttribute('aria-current', 'location');
+  await expect(currentParagraph).toHaveAttribute(
+    'data-position-marker',
+    'current-block'
+  );
 
   await page.getByRole('button', { name: 'Resume reading' }).click();
   await expect(page.getByTestId('current-word')).toHaveText('six');
 });
 
-test('scrolls the exact return paragraph into view', async ({ page }) => {
+test('centers the exact return token while retaining its block marker', async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 900, height: 600 });
   await page.goto('/');
 
@@ -504,22 +522,49 @@ test('scrolls the exact return paragraph into view', async ({ page }) => {
     (_, index) => `Paragraph ${index + 1} has a few readable words.`
   ).join('\n\n');
   await openDocument(page, paragraphs);
-  await page.getByRole('button', { name: 'Immerse from paragraph 14' }).click();
+  await page
+    .locator('[data-block-id="paragraph-14"][data-token-offset="4"]')
+    .click();
   await page.getByRole('button', { name: 'Exit' }).click();
 
   const currentParagraph = page.locator('#paragraph-14');
-  await expect(currentParagraph).toBeFocused();
-  await expect(page.getByTestId('return-word-highlight')).toHaveText(
-    'Paragraph'
+  const currentToken = page.getByTestId('return-word-highlight');
+  await expect(currentToken).toHaveText('few');
+  await expect(currentToken).toBeFocused();
+  await expect(currentParagraph).toHaveAttribute(
+    'data-position-marker',
+    'current-block'
   );
 
-  const distanceFromViewportCenter = await currentParagraph.evaluate(
-    (paragraph) => {
-      const bounds = paragraph.getBoundingClientRect();
-      return Math.abs(bounds.top + bounds.height / 2 - window.innerHeight / 2);
-    }
-  );
+  const distanceFromViewportCenter = await currentToken.evaluate((token) => {
+    const bounds = token.getBoundingClientRect();
+    return Math.abs(bounds.top + bounds.height / 2 - window.innerHeight / 2);
+  });
   expect(distanceFromViewportCenter).toBeLessThan(80);
+});
+
+test('keeps an exact static return indication with reduced motion', async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/');
+  await openDocument(page, 'alpha beta gamma');
+  await page
+    .locator('[data-block-id="paragraph-1"][data-token-offset="1"]')
+    .click();
+  await page.getByRole('button', { name: 'Exit' }).click();
+
+  const returnToken = page.getByTestId('return-word-highlight');
+  await expect(returnToken).toHaveText('beta');
+  await expect(returnToken).toHaveCSS('animation-name', 'none');
+  await expect(returnToken).toHaveAttribute(
+    'data-highlight-kind',
+    'return-position'
+  );
+  await expect(page.locator('#paragraph-1')).toHaveAttribute(
+    'data-position-marker',
+    'current-block'
+  );
 });
 
 test('supports immersive keyboard controls', async ({ page }) => {

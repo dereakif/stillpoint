@@ -249,13 +249,13 @@ Navigation mode should support scrolling, skimming, searching, and choosing wher
 
 ## Exact-position return refinement
 
-- [ ] Scroll the current token—not only its paragraph—into view when navigation mode returns.
-- [ ] Position the current token near the vertical center of the viewport where document boundaries allow.
-- [ ] Apply a restrained temporary token glow for approximately one second.
-- [ ] Keep the permanent block-level reading-position marker after the token glow disappears.
-- [ ] Ensure the temporary glow and permanent marker remain distinguishable from search results and text selection.
-- [ ] Preserve the printed-page metaphor: the marker should feel like returning a finger to the correct place.
-- [ ] Respect reduced motion without removing the exact-position indication.
+- [x] Scroll the current token—not only its paragraph—into view when navigation mode returns.
+- [x] Position the current token near the vertical center of the viewport where document boundaries allow.
+- [x] Apply a restrained temporary token glow for approximately one second.
+- [x] Keep the permanent block-level reading-position marker after the token glow disappears.
+- [x] Ensure the temporary glow and permanent marker remain distinguishable from search results and text selection.
+- [x] Preserve the printed-page metaphor: the marker should feel like returning a finger to the correct place.
+- [x] Respect reduced motion without removing the exact-position indication.
 
 ## Bottom interaction hint
 

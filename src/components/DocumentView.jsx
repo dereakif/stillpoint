@@ -3,7 +3,7 @@ import { ChevronLeft, ChevronRight, Edit3, Menu, Play, X } from 'lucide-react';
 import { getReadingPositionSummary } from '../utils';
 import TableOfContents from './TableOfContents';
 
-const RETURN_HIGHLIGHT_DURATION = 2400;
+const RETURN_HIGHLIGHT_DURATION = 1100;
 
 const DocumentView = ({
   document: documentModel,
@@ -51,11 +51,16 @@ const DocumentView = ({
   useEffect(() => {
     if (!returnContext) return undefined;
 
+    const currentToken = document.querySelector(
+      `[data-block-id="${returnContext.position.blockId}"][data-token-offset="${returnContext.position.tokenOffset}"]`
+    );
     const currentParagraph = document.getElementById(
       returnContext.position.blockId
     );
-    currentParagraph?.scrollIntoView({ block: 'center', behavior: 'instant' });
-    currentParagraph?.focus({ preventScroll: true });
+    const returnTarget = currentToken ?? currentParagraph;
+
+    returnTarget?.scrollIntoView({ block: 'center', behavior: 'instant' });
+    returnTarget?.focus({ preventScroll: true });
     setShowReturnHighlight(true);
 
     const highlightTimer = window.setTimeout(() => {
@@ -270,8 +275,9 @@ const DocumentView = ({
           data-token-id={token.id}
           data-block-id={token.blockId}
           data-token-offset={token.tokenOffset}
+          data-highlight-kind={isReturnToken ? 'return-position' : undefined}
           data-testid={isReturnToken ? 'return-word-highlight' : undefined}
-          className={`cursor-pointer rounded-[0.2em] outline-none transition-colors motion-reduce:transition-none hover:bg-primary/12 focus:bg-primary/15 focus:ring-1 focus:ring-primary/40 ${
+          className={`document-token cursor-pointer rounded-[0.2em] outline-none transition-colors motion-reduce:transition-none hover:bg-primary/12 focus:bg-primary/15 focus:ring-1 focus:ring-primary/40 ${
             isReturnToken ? 'return-word-highlight' : ''
           }`}
         >
@@ -468,6 +474,9 @@ const DocumentView = ({
                     data-section-id={paragraph.sectionId}
                     tabIndex={-1}
                     aria-current={isCurrent ? 'location' : undefined}
+                    data-position-marker={
+                      isCurrent ? 'current-block' : undefined
+                    }
                     data-token-offset={
                       isCurrent ? readingPosition.tokenOffset : undefined
                     }
