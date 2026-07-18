@@ -46,15 +46,15 @@ Open the local URL printed by Vite.
 
 ### Keyboard shortcuts
 
-| Key | Action |
-| --- | --- |
-| `Space` | Play or pause |
-| `Left Arrow` | Rewind five tokens |
-| `Right Arrow` | Skip forward five tokens |
-| `Up Arrow` | Increase speed by 10 WPM |
-| `Down Arrow` | Decrease speed by 10 WPM |
-| `C` | Replace the current text with clipboard contents and continue |
-| `Escape` | Exit immersive mode |
+| Key           | Action                                                        |
+| ------------- | ------------------------------------------------------------- |
+| `Space`       | Play or pause                                                 |
+| `Left Arrow`  | Rewind five tokens                                            |
+| `Right Arrow` | Skip forward five tokens                                      |
+| `Up Arrow`    | Increase speed by 10 WPM                                      |
+| `Down Arrow`  | Decrease speed by 10 WPM                                      |
+| `C`           | Replace the current text with clipboard contents and continue |
+| `Escape`      | Exit immersive mode                                           |
 
 Clipboard access depends on browser support, page security, and user permission. It generally works on `localhost` and secure HTTPS pages.
 
@@ -64,6 +64,21 @@ Clipboard access depends on browser support, page security, and user permission.
 - Pausing keeps the current token selected. Resuming redisplays that token for its full calculated duration rather than continuing a partially elapsed duration.
 - Changing WPM during playback immediately redisplays the current token and gives it a full duration calculated at the new speed.
 - Playing after completion restarts playback from the first token. `reset` returns to and previews the first token while paused; `restart` returns to the first token and begins playing.
+
+## RSVP player API
+
+`createRSVPPlayer(text, options)` returns an immutable public interface. Internal timers, tokens, and listener collections remain private.
+
+### Commands and state
+
+- Playback: `play()`, `pause()`, `playToggle()`, `restart()`, and `reset()`
+- Navigation: `preview()`, `rewind(count)`, and `skipForward(count)`
+- Content and speed: `loadText(text)`, `setWpm(wpm)`, and `getWpm()`
+- State: `isPlaying()` and `getState()`
+
+`getState()` returns a new snapshot containing `isPlaying`, `wpm`, `currentIndex`, `tokenCount`, and `progress`. Empty content uses `currentIndex: null` and `progress: 0`.
+
+Subscribe with `subscribe(event, listener)`. Supported events are `word`, `progress`, `complete`, `playStateChange`, and `wpmChange`. Every call returns an unsubscribe function, and multiple listeners can observe the same event independently.
 
 ## Available commands
 

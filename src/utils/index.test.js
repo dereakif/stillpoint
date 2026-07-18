@@ -58,6 +58,21 @@ describe('tokenize', () => {
     );
   });
 
+  test('uses booleans consistently for every metadata field', () => {
+    const [token] = tokenize('plain');
+
+    expect(token).toEqual({
+      text: 'plain',
+      length: 5,
+      isSlashPart: false,
+      hasSlashAfter: false,
+      hasEmDashAfter: false,
+      isSentenceEnd: false,
+      isCommaPause: false,
+      isParagraphEnd: false,
+    });
+  });
+
   test('attaches an em dash to the preceding readable token', () => {
     expect(tokenize('alpha—beta')).toEqual([
       expect.objectContaining({ text: 'alpha', hasEmDashAfter: true }),
@@ -277,6 +292,37 @@ describe('createRSVPPlayer', () => {
     expect(words).toEqual([]);
     expect(progress).toEqual([]);
     expect(player.isPlaying()).toBe(false);
+  });
+
+  test('exposes immutable commands and a state snapshot', () => {
+    const player = createRSVPPlayer('alpha beta', { baseWpm: 400 });
+
+    expect(Object.isFrozen(player)).toBe(true);
+    expect(player.getState()).toEqual({
+      isPlaying: false,
+      wpm: 400,
+      currentIndex: 0,
+      tokenCount: 2,
+      progress: 0.5,
+    });
+
+    player.skipForward(1);
+    expect(player.getState()).toEqual({
+      isPlaying: false,
+      wpm: 400,
+      currentIndex: 1,
+      tokenCount: 2,
+      progress: 1,
+    });
+
+    player.loadText('');
+    expect(player.getState()).toEqual({
+      isPlaying: false,
+      wpm: 400,
+      currentIndex: null,
+      tokenCount: 0,
+      progress: 0,
+    });
   });
 
   test('clamps WPM and reports changes', () => {

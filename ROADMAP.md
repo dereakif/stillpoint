@@ -41,10 +41,10 @@ Prepare the current application for shared position state and larger product fea
 
 - [x] Replace single mutable callback properties with a subscription API.
 - [x] Make every subscription return an unsubscribe function.
-- [ ] Define a stable public interface for player state and commands.
-- [ ] Remove stale implementation comments and unused function arguments.
-- [ ] Add a documented token shape using JSDoc or TypeScript.
-- [ ] Ensure token metadata fields always use consistent boolean values.
+- [x] Define a stable public interface for player state and commands.
+- [x] Remove stale implementation comments and unused function arguments.
+- [x] Add a documented token shape using JSDoc or TypeScript.
+- [x] Ensure token metadata fields always use consistent boolean values.
 
 ## Browser-level test foundation
 

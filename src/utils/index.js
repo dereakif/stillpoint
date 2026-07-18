@@ -1,3 +1,28 @@
+/**
+ * @typedef {object} RSVPToken
+ * @property {string} text
+ * @property {number} length
+ * @property {boolean} isSlashPart
+ * @property {boolean} hasSlashAfter
+ * @property {boolean} hasEmDashAfter
+ * @property {boolean} isSentenceEnd
+ * @property {boolean} isCommaPause
+ * @property {boolean} isParagraphEnd
+ */
+
+/**
+ * @typedef {'word' | 'progress' | 'complete' | 'playStateChange' | 'wpmChange'} RSVPPlayerEvent
+ */
+
+/**
+ * @typedef {object} RSVPPlayerState
+ * @property {boolean} isPlaying
+ * @property {number} wpm
+ * @property {number | null} currentIndex
+ * @property {number} tokenCount
+ * @property {number} progress
+ */
+
 const FUNCTION_WORDS = new Set([
   'the',
   'a',
@@ -31,8 +56,8 @@ export const computeORPIndex = (word) => {
   return Math.min(4, Math.floor(len * 0.45));
 };
 
-export const splitAtORP = (word, opts = {}) => {
-  const idx = computeORPIndex(word, opts);
+export const splitAtORP = (word) => {
+  const idx = computeORPIndex(word);
   return {
     before: word.slice(0, idx),
     pivot: word.slice(idx, idx + 1),
@@ -77,6 +102,10 @@ export const normalizeText = (rawText) => {
   );
 };
 
+/**
+ * @param {string} rawText
+ * @returns {RSVPToken[]}
+ */
 export const tokenize = (rawText) => {
   const normalizedText = normalizeText(rawText);
 
@@ -113,8 +142,8 @@ export const tokenize = (rawText) => {
         text,
         length: text.length,
 
-        isSlashPart: wordData.isSlashPart,
-        hasSlashAfter: wordData.hasSlashAfter,
+        isSlashPart: Boolean(wordData.isSlashPart),
+        hasSlashAfter: Boolean(wordData.hasSlashAfter),
 
         hasEmDashAfter: false,
 
@@ -137,6 +166,12 @@ export const tokenize = (rawText) => {
   return tokens;
 };
 
+/**
+ * @param {RSVPToken} token
+ * @param {number} baseWpm
+ * @param {object} [opts]
+ * @returns {number}
+ */
 export const computeWordDuration = (token, baseWpm, opts = {}) => {
   const {
     commaPauseMultiplier = 1.8,
@@ -182,6 +217,12 @@ export const computeWordDuration = (token, baseWpm, opts = {}) => {
   return Math.max(minMs, Math.round(baseMs * multiplier));
 };
 
+/**
+ * Creates an RSVP player with a stable command, state, and event interface.
+ *
+ * @param {string} text
+ * @param {{ baseWpm?: number }} [options]
+ */
 export const createRSVPPlayer = (text, { baseWpm = 300 } = {}) => {
   let tokens = tokenize(text);
   let index = 0;
@@ -203,6 +244,11 @@ export const createRSVPPlayer = (text, { baseWpm = 300 } = {}) => {
 
   const player = {};
 
+  /**
+   * @param {RSVPPlayerEvent} event
+   * @param {(value?: RSVPToken | number | boolean) => void} listener
+   * @returns {() => boolean}
+   */
   player.subscribe = (event, listener) => {
     const eventListeners = listeners[event];
 
@@ -304,17 +350,27 @@ export const createRSVPPlayer = (text, { baseWpm = 300 } = {}) => {
 
   player.isPlaying = () => playing;
 
+  player.getState = () => ({
+    isPlaying: playing,
+    wpm,
+    currentIndex: tokens.length ? Math.min(index, tokens.length - 1) : null,
+    tokenCount: tokens.length,
+    progress: tokens.length
+      ? (Math.min(index, tokens.length - 1) + 1) / tokens.length
+      : 0,
+  });
+
   player.setWpm = (newWpm) => {
     wpm = Math.max(100, Math.min(800, newWpm));
     emit('wpmChange', wpm);
 
     if (playing) {
       clearTimeout(timerId);
-      scheduleNext(); // reschedules the *current* word at the new speed
+      scheduleNext();
     }
   };
 
   player.getWpm = () => wpm;
 
-  return player;
+  return Object.freeze(player);
 };
