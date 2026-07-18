@@ -1,5 +1,3 @@
-const PREFIX_WORDS = new Set(['a', 'an', 'the', 'to', 'of', 'in', 'with']);
-
 const FUNCTION_WORDS = new Set([
   'the',
   'a',
@@ -40,40 +38,6 @@ export const splitAtORP = (word, opts = {}) => {
     pivot: word.slice(idx, idx + 1),
     after: word.slice(idx + 1),
   };
-};
-
-const groupPrefixWords = (tokens) => {
-  const result = [];
-
-  for (let index = 0; index < tokens.length; index += 1) {
-    const token = tokens[index];
-    const nextToken = tokens[index + 1];
-
-    const bare = token.text.toLowerCase().replace(/[^\p{L}]/gu, '');
-
-    if (
-      PREFIX_WORDS.has(bare) &&
-      nextToken &&
-      !token.isSentenceEnd &&
-      token.text.length + nextToken.text.length <= 16
-    ) {
-      result.push({
-        ...token,
-        text: `${token.text} ${nextToken.text}`,
-        length: token.text.length + nextToken.text.length + 1,
-        isPhrase: true,
-        isSentenceEnd: nextToken.isSentenceEnd,
-        isCommaPause: nextToken.isCommaPause,
-      });
-
-      index += 1;
-      continue;
-    }
-
-    result.push(token);
-  }
-
-  return result;
 };
 
 const isUrl = (value) => /^https?:\/\//i.test(value);
@@ -161,9 +125,7 @@ export const tokenize = (rawText) => {
       });
     });
 
-    const groupedTokens = groupPrefixWords(paragraphTokens);
-
-    const lastToken = groupedTokens.at(-1);
+    const lastToken = paragraphTokens.at(-1);
 
     if (lastToken && paragraphIndex < paragraphs.length - 1) {
       lastToken.isParagraphEnd = true;
@@ -184,6 +146,8 @@ export const computeWordDuration = (token, baseWpm, opts = {}) => {
     emDashMultiplier = 2,
     longWordThreshold = 7,
     longWordMultiplier = 1.35,
+    veryLongWordThreshold = 16,
+    veryLongWordCharacterMultiplier = 0.05,
     functionWordMultiplier = 0.75,
     minMs = 60,
   } = opts;
@@ -199,13 +163,21 @@ export const computeWordDuration = (token, baseWpm, opts = {}) => {
     // scale a bit further for very long words on top of the flat multiplier
     const extra = 1 + (token.length - longWordThreshold) * 0.04;
     multiplier *= longWordMultiplier * extra;
+
+    if (token.length >= veryLongWordThreshold) {
+      const veryLongWordExtra =
+        1 +
+        (token.length - veryLongWordThreshold + 1) *
+          veryLongWordCharacterMultiplier;
+      multiplier *= veryLongWordExtra;
+    }
   }
 
   if (token.isCommaPause) multiplier *= commaPauseMultiplier;
   if (token.isSentenceEnd) multiplier *= sentenceEndMultiplier;
   if (token.isParagraphEnd) multiplier *= paragraphEndMultiplier;
   if (token.hasSlashAfter) multiplier *= slashMultiplier;
-  if (token.emDashAfter) multiplier *= emDashMultiplier;
+  if (token.hasEmDashAfter) multiplier *= emDashMultiplier;
 
   return Math.max(minMs, Math.round(baseMs * multiplier));
 };
