@@ -54,14 +54,14 @@ Prepare the current application for shared position state and larger product fea
 - [x] Add a test confirming playback does not restart after exit.
 - [x] Add a test for keyboard controls.
 - [x] Add desktop and mobile long-word layout tests.
-- [ ] Add a reduced-motion transition test.
+- [x] Add a reduced-motion transition test.
 
 ## Completion criteria
 
-- [ ] Playback has documented and tested end, restart, pause, and progress semantics.
+- [x] Playback has documented and tested end, restart, pause, and progress semantics.
 - [x] Empty documents cannot crash the player.
 - [x] UI components can subscribe to engine events without replacing one another.
-- [ ] Critical immersive-mode lifecycle behavior is covered in a real browser.
+- [x] Critical immersive-mode lifecycle behavior is covered in a real browser.
 
 ---
 

@@ -67,6 +67,21 @@ test('supports immersive keyboard controls', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Play' })).toBeVisible();
 });
 
+test('disables immersive transitions when reduced motion is preferred', async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/');
+  await enterImmersiveMode(page);
+
+  const immersiveContent = page.getByTestId('immersive-content');
+  const readingProgress = page.getByTestId('reading-progress');
+
+  await expect(immersiveContent).toBeVisible();
+  await expect(immersiveContent).toHaveCSS('transition-property', 'none');
+  await expect(readingProgress).toHaveCSS('transition-property', 'none');
+});
+
 test('keeps long words inside the viewport with a centered pivot', async ({
   page,
 }) => {

@@ -30,7 +30,7 @@ const DocumentView = ({ text, setText, onStartReading }) => {
           type="button"
           onClick={onStartReading}
           disabled={!text.trim()}
-          className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-3 font-medium text-primary-foreground transition hover:opacity-90 disabled:pointer-events-none disabled:opacity-40"
+          className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-3 font-medium text-primary-foreground transition motion-reduce:transition-none hover:opacity-90 disabled:pointer-events-none disabled:opacity-40"
         >
           <Play className="size-4 fill-current" />
           Immerse

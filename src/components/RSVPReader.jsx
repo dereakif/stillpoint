@@ -174,7 +174,8 @@ const RSVPReader = ({ text, setText, onExit }) => {
       </button>
 
       <div
-        className={`flex flex-1 items-center justify-center transition-all duration-700 ${
+        data-testid="immersive-content"
+        className={`flex flex-1 items-center justify-center transition-all duration-700 motion-reduce:transition-none ${
           isReady
             ? 'scale-100 opacity-100 blur-0'
             : 'scale-95 opacity-30 blur-sm'

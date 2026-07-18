@@ -80,7 +80,8 @@ const WordDisplay = ({ engineRef }) => {
 
             <div
               ref={progressRef}
-              className="absolute inset-y-0 left-0 w-0 bg-linear-to-r from-primary/5 via-primary/5 to-primary/5 transition-[width] duration-200 ease-linear rounded-xl"
+              data-testid="reading-progress"
+              className="absolute inset-y-0 left-0 w-0 bg-linear-to-r from-primary/5 via-primary/5 to-primary/5 transition-[width] duration-200 ease-linear motion-reduce:transition-none rounded-xl"
             />
 
             <div className="absolute bottom-0 left-1/2 top-0 w-px -translate-x-1/2 bg-primary/20" />
