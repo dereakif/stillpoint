@@ -82,6 +82,21 @@ const splitWordToken = (word) => {
     }));
 };
 
+/**
+ * Creates deterministic paragraph IDs while preserving punctuation and
+ * intentional line breaks within each paragraph.
+ *
+ * @param {string} rawText
+ * @returns {{ id: string, text: string }[]}
+ */
+export const createDocumentParagraphs = (rawText) =>
+  rawText
+    .replace(/\r\n?/g, '\n')
+    .split(/\n[ \t]*\n+/)
+    .map((paragraph) => paragraph.trim())
+    .filter(Boolean)
+    .map((text, index) => ({ id: `paragraph-${index + 1}`, text }));
+
 export const normalizeText = (rawText) => {
   return (
     rawText

@@ -71,13 +71,13 @@ Build the central Stillpoint experience: navigating a document and entering or l
 
 ## Document reading view
 
-- [ ] Separate document import/editing from document reading.
-- [ ] Replace the textarea-only reading experience with rendered document content.
-- [ ] Render paragraphs with stable IDs.
-- [ ] Preserve paragraph breaks and basic punctuation.
-- [ ] Keep the reading column comfortable at desktop and mobile widths.
-- [ ] Add an explicit **Edit document** action.
-- [ ] Add an empty-document state.
+- [x] Separate document import/editing from document reading.
+- [x] Replace the textarea-only reading experience with rendered document content.
+- [x] Render paragraphs with stable IDs.
+- [x] Preserve paragraph breaks and basic punctuation.
+- [x] Keep the reading column comfortable at desktop and mobile widths.
+- [x] Add an explicit **Edit document** action.
+- [x] Add an empty-document state.
 
 ## Shared reading position
 

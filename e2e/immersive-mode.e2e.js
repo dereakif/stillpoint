@@ -1,8 +1,13 @@
 import { expect, test } from '@playwright/test';
 
-const enterImmersiveMode = async (page, text = 'Focus begins here.') => {
+const openDocument = async (page, text = 'Focus begins here.') => {
   const documentInput = page.getByPlaceholder('Paste your text here...');
   await documentInput.fill(text);
+  await page.getByRole('button', { name: 'Read document' }).click();
+};
+
+const enterImmersiveMode = async (page, text = 'Focus begins here.') => {
+  await openDocument(page, text);
   await page.getByRole('button', { name: 'Immerse' }).click();
 };
 
@@ -10,18 +15,39 @@ test('enters immersive mode with the imported document', async ({ page }) => {
   await page.goto('/');
 
   const documentInput = page.getByPlaceholder('Paste your text here...');
-  const immerseButton = page.getByRole('button', { name: 'Immerse' });
+  const readButton = page.getByRole('button', { name: 'Read document' });
 
-  await expect(immerseButton).toBeDisabled();
+  await expect(readButton).toBeDisabled();
   await documentInput.fill('Focus begins here.');
-  await expect(immerseButton).toBeEnabled();
-  await immerseButton.click();
+  await expect(readButton).toBeEnabled();
+  await readButton.click();
+  await page.getByRole('button', { name: 'Immerse' }).click();
 
   await expect(
     page.getByRole('region', { name: 'Immersive reading mode' })
   ).toBeVisible();
   await expect(page.getByRole('button', { name: 'Exit' })).toBeVisible();
   await expect(documentInput).not.toBeVisible();
+});
+
+test('renders document paragraphs and returns to editing', async ({ page }) => {
+  await page.goto('/');
+  await openDocument(page, 'First line.\nStill first!\n\nSecond paragraph?');
+
+  const documentContent = page.getByRole('article', {
+    name: 'Document content',
+  });
+  await expect(documentContent.locator('#paragraph-1')).toHaveText(
+    'First line.\nStill first!'
+  );
+  await expect(documentContent.locator('#paragraph-2')).toHaveText(
+    'Second paragraph?'
+  );
+
+  await page.getByRole('button', { name: 'Edit document' }).click();
+  await expect(page.getByPlaceholder('Paste your text here...')).toHaveValue(
+    'First line.\nStill first!\n\nSecond paragraph?'
+  );
 });
 
 test('exits immersive mode during the countdown', async ({ page }) => {
@@ -32,7 +58,9 @@ test('exits immersive mode during the countdown', async ({ page }) => {
   await expect(page.getByText('3', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Exit' }).click();
 
-  await expect(page.getByPlaceholder('Paste your text here...')).toBeVisible();
+  await expect(
+    page.getByRole('article', { name: 'Document content' })
+  ).toBeVisible();
   await expect(
     page.getByRole('region', { name: 'Immersive reading mode' })
   ).toHaveCount(0);
@@ -138,7 +166,9 @@ test('does not restart playback after exiting before delayed play', async ({
   await page.keyboard.press('Escape');
   await page.clock.fastForward(1000);
 
-  await expect(page.getByPlaceholder('Paste your text here...')).toBeVisible();
+  await expect(
+    page.getByRole('article', { name: 'Document content' })
+  ).toBeVisible();
   await expect(
     page.getByRole('region', { name: 'Immersive reading mode' })
   ).toHaveCount(0);

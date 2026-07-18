@@ -38,11 +38,13 @@ Open the local URL printed by Vite.
 
 ## Usage
 
-1. Paste or type text into the document field.
-2. Select **Immerse**.
-3. Wait for the countdown to finish.
-4. Use the on-screen controls or keyboard shortcuts to control playback.
-5. Select **Exit** or press `Escape` to return to the document view.
+1. Paste or type text into the document editor.
+2. Select **Read document** to open the rendered reading view.
+3. Select **Immerse**.
+4. Wait for the countdown to finish.
+5. Use the on-screen controls or keyboard shortcuts to control playback.
+6. Select **Exit** or press `Escape` to return to the document view.
+7. Select **Edit document** whenever you want to change the source text.
 
 ### Keyboard shortcuts
 

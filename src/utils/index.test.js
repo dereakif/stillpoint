@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import {
   computeORPIndex,
   computeWordDuration,
+  createDocumentParagraphs,
   createRSVPPlayer,
   normalizeText,
   splitAtORP,
@@ -18,6 +19,23 @@ const createToken = (overrides = {}) => ({
   isCommaPause: false,
   isParagraphEnd: false,
   ...overrides,
+});
+
+describe('createDocumentParagraphs', () => {
+  test('creates stable paragraph IDs and preserves content', () => {
+    expect(
+      createDocumentParagraphs(
+        'First line.\r\nStill first!\r\n\r\n  Second paragraph?  '
+      )
+    ).toEqual([
+      { id: 'paragraph-1', text: 'First line.\nStill first!' },
+      { id: 'paragraph-2', text: 'Second paragraph?' },
+    ]);
+  });
+
+  test('returns no paragraphs for blank text', () => {
+    expect(createDocumentParagraphs('  \n\n  ')).toEqual([]);
+  });
 });
 
 describe('normalizeText', () => {
