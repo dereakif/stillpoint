@@ -14,6 +14,7 @@ The reader highlights each token's Optimal Recognition Point (ORP), adjusts timi
 - Synchronized document progress and current-position context
 - Markdown sections with a live structure preview
 - Calm document workspace with responsive table-of-contents navigation
+- Browser-local document library with progress, rename, delete, and JSON backup
 - Keyboard shortcuts for playback and speed
 - Clipboard loading while in immersive mode
 - Responsive interface built with Tailwind CSS and DaisyUI
@@ -41,7 +42,7 @@ Open the local URL printed by Vite.
 
 ## Usage
 
-1. Paste or type Markdown into the document editor.
+1. Create a document from the local library, or paste Markdown directly when the library is empty.
 2. Review the detected sections. Edit a section title or add a section boundary where needed.
 3. Select **Read document** to open the rendered reading workspace.
 4. Use **Contents** to navigate sections, or collapse the desktop contents sidebar for more space.
@@ -49,7 +50,7 @@ Open the local URL printed by Vite.
 6. Wait for the countdown to finish.
 7. Use the on-screen controls or keyboard shortcuts to control playback.
 8. Select **Exit** or press `Escape` to return with the exact token centered and briefly highlighted in the document view.
-9. Select **Edit document** whenever you want to change the Markdown source.
+9. Select **Edit document** whenever you want to change the Markdown source, or **Library** to switch documents.
 
 ### Keyboard shortcuts
 
@@ -81,6 +82,12 @@ For keyboard entry, one word at a time participates in the tab order. Focus it a
 - Pausing keeps the current token selected. Resuming redisplays that token for its full calculated duration rather than continuing a partially elapsed duration.
 - Changing WPM during playback immediately redisplays the current token and gives it a full duration calculated at the new speed.
 - Playing after completion restarts playback from the first token. `reset` returns to and previews the first token while paused; `restart` returns to the first token and begins playing.
+
+## Local document library
+
+Stillpoint stores saved document source, title, progress, last-opened time, and reading position in IndexedDB. Data remains in the current browser and is never uploaded by Stillpoint. A returning session opens the library when saved documents exist; selecting a document restores its last valid token position.
+
+The library supports rename and confirmed deletion. Export an individual `.stillpoint.json` file or the complete `stillpoint-library-backup.json` before clearing browser data or moving to another device. Storage-denied and quota errors are shown in the interface with actionable feedback.
 
 ## Structured document model
 
@@ -148,7 +155,7 @@ bun run preview     # Preview the production build locally
 
 ## Current limitations
 
-- Text and reading position are not persisted between page loads.
+- Library data is local to one browser profile and is not synchronized across devices.
 - Reading speed is not persisted when immersive mode is closed or the page reloads.
 - Clipboard loading may be unavailable if browser permission is denied.
 

@@ -503,7 +503,8 @@ test('persists the selected chapter completion behavior', async ({ page }) => {
   await expect(behaviorSelect).toHaveValue('continue');
 
   await page.reload();
-  await openDocument(page, source);
+  await expect(page.getByRole('heading', { name: 'Library' })).toBeVisible();
+  await page.getByRole('button', { name: /^One/ }).click();
   await expect(
     page.getByRole('combobox', { name: 'Chapter completion behavior' })
   ).toHaveValue('continue');

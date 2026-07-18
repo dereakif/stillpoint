@@ -1,5 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight, Edit3, Menu, Play, X } from 'lucide-react';
+import {
+  ChevronLeft,
+  ChevronRight,
+  Edit3,
+  Library,
+  Menu,
+  Play,
+  X,
+} from 'lucide-react';
 import { getReadingPositionSummary } from '../utils';
 import TableOfContents from './TableOfContents';
 
@@ -13,6 +21,7 @@ const DocumentView = ({
   showEntryHint = false,
   chapterCompletionBehavior = 'ask',
   onChapterCompletionBehaviorChange,
+  onLibrary,
   onEdit,
   onStartReading,
 }) => {
@@ -369,6 +378,16 @@ const DocumentView = ({
           <h1 className="min-w-0 flex-1 truncate text-center text-sm font-medium sm:text-left">
             {displayTitle}
           </h1>
+
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm shrink-0"
+            aria-label="Open library"
+            onClick={onLibrary}
+          >
+            <Library className="size-4" />
+            <span className="hidden sm:inline">Library</span>
+          </button>
 
           <button
             type="button"

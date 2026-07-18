@@ -314,15 +314,15 @@ Remember documents, positions, and preferences across sessions.
 
 ## Local document library
 
-- [ ] Choose local persistence, initially IndexedDB or another browser-local store.
-- [ ] Save imported documents locally.
-- [ ] List saved documents with title, progress, and last-opened time.
-- [ ] Open a saved document at its last reading position.
-- [ ] Rename documents.
-- [ ] Delete documents with confirmation.
-- [ ] Handle storage errors and quota limits.
-- [ ] Explain clearly that documents remain local.
-- [ ] Add export and backup options before users depend on local storage.
+- [x] Choose local persistence, initially IndexedDB or another browser-local store.
+- [x] Save imported documents locally.
+- [x] List saved documents with title, progress, and last-opened time.
+- [x] Open a saved document at its last reading position.
+- [x] Rename documents.
+- [x] Delete documents with confirmation.
+- [x] Handle storage errors and quota limits.
+- [x] Explain clearly that documents remain local.
+- [x] Add export and backup options before users depend on local storage.
 
 ## Reading-session persistence
 

@@ -1,8 +1,20 @@
 import { useEffect, useRef, useState } from 'react';
 import RSVPReader from './components/RSVPReader';
 import DocumentEditor from './components/DocumentEditor';
+import DocumentLibrary from './components/DocumentLibrary';
 import DocumentView from './components/DocumentView';
-import { createDocumentModel, tokenIndexToPosition } from './utils';
+import {
+  createDocumentModel,
+  positionToTokenIndex,
+  tokenIndexToPosition,
+} from './utils';
+import {
+  createDocumentId,
+  deleteDocument as deleteStoredDocument,
+  listDocuments,
+  renameDocument as renameStoredDocument,
+  saveDocument as saveStoredDocument,
+} from './storage/documentLibrary';
 
 const MODE_TRANSITION_DURATION = 800;
 const CHAPTER_COMPLETION_STORAGE_KEY = 'stillpoint.chapterCompletionBehavior';
@@ -21,11 +33,33 @@ const getInitialChapterCompletionBehavior = () => {
   }
 };
 
-function App() {
-  const [document, setDocument] = useState(() =>
-    createDocumentModel('', { revision: 0 })
+const createEmptyDocument = () =>
+  createDocumentModel('', { id: createDocumentId(), revision: 0 });
+
+const getDocumentProgress = (documentModel, readingPosition) => {
+  if (!documentModel.tokens.length) return 0;
+  const tokenIndex = positionToTokenIndex(
+    documentModel.tokens,
+    readingPosition
   );
-  const [mode, setMode] = useState('edit');
+  return (tokenIndex + 1) / documentModel.tokens.length;
+};
+
+const toLibraryRecord = (documentModel, readingPosition) => ({
+  id: documentModel.id,
+  title: documentModel.title,
+  source: {
+    text: documentModel.source.text,
+    format: documentModel.source.format,
+    revision: documentModel.source.revision,
+  },
+  readingPosition,
+  progress: getDocumentProgress(documentModel, readingPosition),
+});
+
+function App() {
+  const [document, setDocument] = useState(createEmptyDocument);
+  const [mode, setMode] = useState('loading');
   const [readingPosition, setReadingPosition] = useState(null);
   const [returnContext, setReturnContext] = useState(null);
   const [readingSessionId, setReadingSessionId] = useState(0);
@@ -33,18 +67,68 @@ function App() {
   const [chapterCompletionBehavior, setChapterCompletionBehavior] = useState(
     getInitialChapterCompletionBehavior
   );
+  const [libraryDocuments, setLibraryDocuments] = useState([]);
+  const [storageError, setStorageError] = useState(null);
   const returnSequenceRef = useRef(0);
   const exitTimerRef = useRef(null);
   const isExitingRef = useRef(false);
 
-  useEffect(
-    () => () => {
-      window.clearTimeout(exitTimerRef.current);
-    },
-    []
-  );
-
   const text = document.source.text;
+
+  const refreshLibrary = async () => {
+    const documents = await listDocuments();
+    setLibraryDocuments(documents);
+    return documents;
+  };
+
+  const reportStorageError = (error) => {
+    setStorageError(
+      error?.message || 'The local document library is unavailable.'
+    );
+  };
+
+  const persistDocument = async (
+    documentModel = document,
+    position = readingPosition
+  ) => {
+    if (!documentModel.source.text.trim()) return null;
+
+    try {
+      const record = await saveStoredDocument(
+        toLibraryRecord(documentModel, position)
+      );
+      await refreshLibrary();
+      setStorageError(null);
+      return record;
+    } catch (error) {
+      reportStorageError(error);
+      return null;
+    }
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadLibrary = async () => {
+      try {
+        const documents = await listDocuments();
+        if (cancelled) return;
+        setLibraryDocuments(documents);
+        setMode(documents.length ? 'library' : 'edit');
+      } catch (error) {
+        if (cancelled) return;
+        reportStorageError(error);
+        setMode('edit');
+      }
+    };
+
+    loadLibrary();
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(exitTimerRef.current);
+    };
+  }, []);
 
   const updateChapterCompletionBehavior = (behavior) => {
     if (!CHAPTER_COMPLETION_BEHAVIORS.has(behavior)) return;
@@ -58,18 +142,27 @@ function App() {
   };
 
   const saveDocument = (newText) => {
-    const newDocument = createDocumentModel(newText, {
+    let newDocument = createDocumentModel(newText, {
       id: document.id,
       title: document.title,
       sourceFormat: document.source.format,
       revision: document.source.revision + 1,
     });
+    const inferredTitle = newDocument.sections.find(
+      (section) => section.title
+    )?.title;
 
+    if (newDocument.title === 'Untitled document' && inferredTitle) {
+      newDocument = { ...newDocument, title: inferredTitle };
+    }
+
+    const initialPosition = tokenIndexToPosition(newDocument.tokens, 0);
     setDocument(newDocument);
-    setReadingPosition(tokenIndexToPosition(newDocument.tokens, 0));
+    setReadingPosition(initialPosition);
     setReturnContext(null);
     isExitingRef.current = false;
     setMode('document');
+    persistDocument(newDocument, initialPosition);
   };
 
   const startReading = (position = readingPosition) => {
@@ -91,6 +184,7 @@ function App() {
       setReadingPosition(position);
       returnSequenceRef.current += 1;
       setReturnContext({ id: returnSequenceRef.current, position });
+      persistDocument(document, position);
     }
 
     setMode('returning');
@@ -101,13 +195,113 @@ function App() {
     }, MODE_TRANSITION_DURATION);
   };
 
+  const openLibraryDocument = async (record) => {
+    const openedDocument = createDocumentModel(record.source.text, {
+      id: record.id,
+      title: record.title,
+      sourceFormat: record.source.format,
+      revision: record.source.revision,
+    });
+    const restoredTokenIndex = positionToTokenIndex(
+      openedDocument.tokens,
+      record.readingPosition
+    );
+    const restoredPosition = tokenIndexToPosition(
+      openedDocument.tokens,
+      restoredTokenIndex
+    );
+
+    setDocument(openedDocument);
+    setReadingPosition(restoredPosition);
+    setReturnContext(null);
+    setMode('document');
+    await persistDocument(openedDocument, restoredPosition);
+  };
+
+  const createNewDocument = () => {
+    setDocument(createEmptyDocument());
+    setReadingPosition(null);
+    setReturnContext(null);
+    setMode('edit');
+  };
+
+  const openLibrary = async () => {
+    window.clearTimeout(exitTimerRef.current);
+    isExitingRef.current = false;
+    await persistDocument();
+    setMode('library');
+  };
+
+  const renameLibraryDocument = async (id, title) => {
+    try {
+      await renameStoredDocument(id, title);
+      if (document.id === id) setDocument((current) => ({ ...current, title }));
+      await refreshLibrary();
+      setStorageError(null);
+    } catch (error) {
+      reportStorageError(error);
+    }
+  };
+
+  const deleteLibraryDocument = async (id) => {
+    try {
+      await deleteStoredDocument(id);
+      const documents = await refreshLibrary();
+      if (!documents.length) setDocument(createEmptyDocument());
+      setStorageError(null);
+    } catch (error) {
+      reportStorageError(error);
+    }
+  };
+
   return (
     <main className="min-h-screen">
+      {storageError && (
+        <div
+          role="alert"
+          className="fixed inset-x-4 top-4 z-60 mx-auto flex max-w-2xl items-start justify-between gap-4 rounded-lg border border-error/40 bg-error/12 px-4 py-3 text-sm shadow-lg backdrop-blur-md"
+        >
+          <span>{storageError}</span>
+          <button
+            type="button"
+            className="btn btn-ghost btn-xs"
+            onClick={() => setStorageError(null)}
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
+      {mode === 'loading' && (
+        <section
+          aria-label="Loading document library"
+          className="flex min-h-screen items-center justify-center"
+        >
+          <span className="loading loading-spinner loading-lg text-primary" />
+        </section>
+      )}
+
+      {mode === 'library' && (
+        <DocumentLibrary
+          documents={libraryDocuments}
+          onOpen={openLibraryDocument}
+          onCreate={createNewDocument}
+          onRename={renameLibraryDocument}
+          onDelete={deleteLibraryDocument}
+        />
+      )}
+
       {mode === 'edit' && (
         <DocumentEditor
           text={text}
           onSave={saveDocument}
-          onCancel={text.trim() ? () => setMode('document') : null}
+          onCancel={
+            text.trim()
+              ? () => setMode('document')
+              : libraryDocuments.length
+                ? () => setMode('library')
+                : null
+          }
         />
       )}
 
@@ -122,6 +316,7 @@ function App() {
           showEntryHint={!hasStartedImmersive}
           chapterCompletionBehavior={chapterCompletionBehavior}
           onChapterCompletionBehaviorChange={updateChapterCompletionBehavior}
+          onLibrary={openLibrary}
           onEdit={() => setMode('edit')}
           onStartReading={startReading}
         />
