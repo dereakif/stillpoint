@@ -1,6 +1,8 @@
 import { useRef, useEffect } from 'react';
 import { splitAtORP } from '../utils';
 
+const HORIZONTAL_INSET = 32;
+
 const WordDisplay = ({ engineRef }) => {
   const wrapperRef = useRef(null);
   const beforeRef = useRef(null);
@@ -25,20 +27,32 @@ const WordDisplay = ({ engineRef }) => {
       afterElement.textContent = after;
 
       wrapper.style.transform = 'scale(1)';
+      wrapper.style.removeProperty('letter-spacing');
+      wrapper.style.removeProperty('justify-content');
+      beforeElement.style.removeProperty('flex');
+      afterElement.style.removeProperty('flex');
+
+      const hasOverflow = () =>
+        beforeElement.scrollWidth > beforeElement.clientWidth ||
+        afterElement.scrollWidth > afterElement.clientWidth;
+
+      if (!hasOverflow()) return;
+
+      wrapper.style.letterSpacing = 'normal';
+
+      if (!hasOverflow()) return;
 
       const containerWidth = wrapper.clientWidth;
       const pivotWidth = pivotElement.scrollWidth;
-
-      const availableSideWidth = (containerWidth - pivotWidth) / 2;
       const beforeWidth = beforeElement.scrollWidth;
       const afterWidth = afterElement.scrollWidth;
       const longestSide = Math.max(beforeWidth, afterWidth);
+      const centeredContentWidth = pivotWidth + longestSide * 2;
+      const availableWidth = Math.max(0, containerWidth - HORIZONTAL_INSET);
 
-      if (longestSide > availableSideWidth) {
-        const scale = Math.max(0.5, availableSideWidth / longestSide);
-        wrapper.style.transformOrigin = 'center';
-        wrapper.style.transform = `scale(${scale})`;
-      }
+      if (centeredContentWidth === 0) return;
+
+      wrapper.style.transform = `scale(${availableWidth / centeredContentWidth})`;
     };
 
     const handleProgress = (value) => {
