@@ -33,8 +33,8 @@ Prepare the current application for shared position state and larger product fea
 - [x] Define one consistent meaning for progress values.
 - [x] Make preview, playback, rewind, and forward use the same progress calculation.
 - [x] Make navigation commands safe when the document contains no tokens.
-- [ ] Decide whether pause/resume redisplays the current word or resumes its remaining duration.
-- [ ] Decide how a WPM change affects the currently displayed word.
+- [x] Decide whether pause/resume redisplays the current word or resumes its remaining duration.
+- [x] Decide how a WPM change affects the currently displayed word.
 - [x] Add tests for completion, restart, empty input, and progress consistency.
 
 ## Engine integration

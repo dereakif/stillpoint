@@ -58,6 +58,13 @@ Open the local URL printed by Vite.
 
 Clipboard access depends on browser support, page security, and user permission. It generally works on `localhost` and secure HTTPS pages.
 
+### Playback semantics
+
+- Progress represents the displayed token's one-based position as a fraction of the total token count. The first of four tokens reports `0.25`, and the last reports `1`.
+- Pausing keeps the current token selected. Resuming redisplays that token for its full calculated duration rather than continuing a partially elapsed duration.
+- Changing WPM during playback immediately redisplays the current token and gives it a full duration calculated at the new speed.
+- Playing after completion restarts playback from the first token. `reset` returns to and previews the first token while paused; `restart` returns to the first token and begins playing.
+
 ## Available commands
 
 ```sh

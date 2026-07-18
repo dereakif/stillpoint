@@ -205,6 +205,20 @@ describe('createRSVPPlayer', () => {
     expect(player.isPlaying()).toBe(false);
   });
 
+  test('redisplays the current token for its full duration after resume', () => {
+    const player = createRSVPPlayer('alpha beta');
+    const words = [];
+
+    player.onWord = (token) => words.push(token.text);
+    player.play();
+    player.pause();
+    player.play();
+
+    expect(words).toEqual(['alpha', 'alpha']);
+    expect(player.isPlaying()).toBe(true);
+    player.pause();
+  });
+
   test('rewinds and skips within token boundaries', () => {
     const player = createRSVPPlayer('alpha beta gamma delta');
     const words = [];
@@ -276,6 +290,20 @@ describe('createRSVPPlayer', () => {
     player.setWpm(900);
     expect(player.getWpm()).toBe(800);
     expect(changes).toEqual([100, 800]);
+  });
+
+  test('redisplays the current token when WPM changes during playback', () => {
+    const player = createRSVPPlayer('alpha beta');
+    const words = [];
+
+    player.onWord = (token) => words.push(token.text);
+    player.play();
+    player.setWpm(400);
+
+    expect(words).toEqual(['alpha', 'alpha']);
+    expect(player.getWpm()).toBe(400);
+    expect(player.isPlaying()).toBe(true);
+    player.pause();
   });
 
   test('loads replacement text at the beginning and pauses playback', () => {
