@@ -85,8 +85,11 @@ Subscribe with `subscribe(event, listener)`. Supported events are `word`, `progr
 ```sh
 bun run dev      # Start the Vite development server
 bun run build    # Create a production build in dist/
-bun run lint     # Run Oxlint
-bun run preview  # Preview the production build locally
+bun run lint        # Run Oxlint
+bun run test         # Run unit tests
+bun run test:e2e     # Run Playwright browser tests
+bun run test:e2e:ui  # Open Playwright's interactive test UI
+bun run preview     # Preview the production build locally
 ```
 
 ## Technology

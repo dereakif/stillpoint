@@ -48,8 +48,8 @@ Prepare the current application for shared position state and larger product fea
 
 ## Browser-level test foundation
 
-- [ ] Choose a browser test framework, preferably Playwright.
-- [ ] Add a test for entering immersive mode.
+- [x] Choose a browser test framework, preferably Playwright.
+- [x] Add a test for entering immersive mode.
 - [ ] Add a test for exiting during the countdown.
 - [ ] Add a test confirming playback does not restart after exit.
 - [ ] Add a test for keyboard controls.
