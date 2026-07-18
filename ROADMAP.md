@@ -16,6 +16,7 @@ The central product principle is:
 - [ ] Stop playback immediately when the reader requests it, regardless of transition state.
 - [ ] Make transitions calm and meaningful without delaying interaction.
 - [ ] Preserve document context instead of treating RSVP as an isolated tool.
+- [ ] Make navigation mode feel like a calm document workspace, not a card-heavy dashboard or text editor.
 - [ ] Respect keyboard navigation, screen readers, browser zoom, and reduced-motion preferences.
 - [ ] Prefer understandable defaults over exposing every timing parameter.
 - [ ] Keep imported document content local unless the reader explicitly chooses otherwise.
@@ -194,16 +195,76 @@ Suggested direction:
 - [x] Preserve URLs, punctuation, paragraph breaks, and Unicode text.
 - [x] Add parser tests for malformed and ambiguous input.
 
+## Document workspace shell
+
+Navigation mode should support scrolling, skimming, searching, and choosing where to begin while feeling like a focused reading surface rather than a dashboard.
+
+```text
+┌──────────────────────────────────────────────────────────────┐
+│ Stillpoint       Document title               Search  Theme  │
+├───────────────┬──────────────────────────────────────────────┤
+│ Contents      │                                              │
+│ Introduction  │              Chapter title                   │
+│ Basics        │              Section heading                 │
+│ ORP           │              Paragraph text...               │
+│ Timing        │              Paragraph text...               │
+│ Summary       │                                              │
+├───────────────┴──────────────────────────────────────────────┤
+│         Click any word, heading, or paragraph to Immerse     │
+└──────────────────────────────────────────────────────────────┘
+```
+
+- [ ] Replace the current card-like document header with a restrained workspace shell.
+- [ ] Add a minimal top bar containing Stillpoint, the document title, and only actions that are currently available.
+- [ ] Reserve natural top-bar locations for Search in Phase 4 and Theme in Phase 3 without showing inactive placeholder controls.
+- [ ] Keep the document column centered with a comfortable reading measure independent of sidebar width.
+- [ ] Use whitespace, typography, and subtle dividers instead of a card-heavy dashboard treatment.
+- [ ] Keep document content visually primary while controls remain discoverable by keyboard and pointer.
+- [ ] Define tablet behavior for the top bar, document column, and collapsed contents navigation.
+- [ ] Define mobile behavior with a contents drawer, reflowed top bar, safe-area spacing, and no horizontal overflow.
+- [ ] Add responsive browser tests for desktop, tablet, narrow mobile, and high zoom.
 
 ## Table of contents
 
-- [ ] Add a desktop table-of-contents sidebar.
+- [ ] Add a narrow, collapsible desktop table-of-contents sidebar on the left.
+- [ ] Add a collapsed tablet treatment that does not reduce the document to an uncomfortable width.
 - [ ] Add a mobile table-of-contents drawer or sheet.
 - [ ] Highlight the current chapter.
 - [ ] Let readers jump to a chapter without entering immersive mode.
 - [ ] Add an **Immerse chapter** action.
 - [ ] Keep the URL or application state synchronized with the selected chapter if routing is introduced.
 - [ ] Ensure table-of-contents controls are keyboard and screen-reader accessible.
+
+## Multi-level immersive entry
+
+- [ ] Let a reader activate an individual word and begin immersive playback at that exact token.
+- [ ] Let a reader activate a paragraph and begin at its first readable token.
+- [ ] Give paragraphs a subtle hover and focus-within treatment with a small **Immerse from here** action.
+- [ ] Let a reader activate a heading and begin at the following readable block rather than reading the heading itself.
+- [ ] Keep document text selectable and suppress immersive activation when the reader is selecting text.
+- [ ] Provide keyboard-accessible equivalents for word, paragraph, and heading entry without turning reading text into a noisy tab sequence.
+- [ ] Use event delegation or another scalable strategy instead of attaching heavy handlers to every rendered word.
+- [ ] Preserve token, block, and section mappings for every entry level.
+- [ ] Add browser tests for pointer, keyboard, text-selection, and exact-token entry.
+
+## Exact-position return refinement
+
+- [ ] Scroll the current token—not only its paragraph—into view when navigation mode returns.
+- [ ] Position the current token near the vertical center of the viewport where document boundaries allow.
+- [ ] Apply a restrained temporary token glow for approximately one second.
+- [ ] Keep the permanent block-level reading-position marker after the token glow disappears.
+- [ ] Ensure the temporary glow and permanent marker remain distinguishable from search results and text selection.
+- [ ] Preserve the printed-page metaphor: the marker should feel like returning a finger to the correct place.
+- [ ] Respect reduced motion without removing the exact-position indication.
+
+## Bottom interaction hint
+
+- [ ] Add a subtle instruction such as **Click any word, heading, or paragraph to Immerse**.
+- [ ] Keep the hint near the bottom of the workspace without obscuring document content or mobile controls.
+- [ ] Reduce its opacity after a short delay without making the text unreadable.
+- [ ] Hide it for the remainder of the session after the reader successfully starts immersive mode.
+- [ ] Persist permanent dismissal later with the Phase 3 preference store.
+- [ ] Keep the hint accessible to keyboard and screen-reader users and static under reduced motion.
 
 ## Chapter-aware playback
 
@@ -237,7 +298,10 @@ Suggested direction:
 
 ## Completion criteria
 
+- [ ] Navigation mode presents a calm, responsive document workspace rather than a dashboard.
 - [ ] Structured documents display a usable table of contents.
+- [ ] Readers can enter immersive mode from an exact word, paragraph, heading, or chapter.
+- [ ] Returning from immersion centers and marks the exact current token while retaining a block marker.
 - [ ] Chapter navigation and immersive position remain synchronized.
 - [ ] Chapter completion behavior follows the selected setting.
 - [ ] Documents without headings still work correctly.
@@ -303,6 +367,7 @@ Remember documents, positions, and preferences across sessions.
 ## Appearance settings
 
 - [ ] Add theme selection.
+- [ ] Expose theme selection from the minimal document top bar without turning it into a settings toolbar.
 - [ ] Add document font selection.
 - [ ] Add document width and line-height controls.
 - [ ] Add immersive word-size control.
@@ -313,7 +378,8 @@ Remember documents, positions, and preferences across sessions.
 ## Navigation settings
 
 - [ ] Add table-of-contents visibility preference.
-- [ ] Add **Keep current paragraph centered after exit**.
+- [ ] Add **Keep current token centered after exit**.
+- [ ] Add **Remember that I dismissed the immersive-entry hint**.
 - [ ] Add **Resume automatically when opening a document**.
 - [ ] Add **Remember document scroll position**.
 
@@ -358,6 +424,7 @@ Expand navigation, comprehension, and review without cluttering immersive mode.
 ## Search
 
 - [ ] Add full-document search in navigation mode.
+- [ ] Open search from the minimal document top bar with a keyboard shortcut and accessible on-screen action.
 - [ ] Highlight results without interfering with the reading-position marker.
 - [ ] Jump to a search result in navigation mode.
 - [ ] Add **Immerse from result**.
@@ -465,7 +532,6 @@ These tasks apply throughout all phases.
 
 These ideas are valuable but should not distract from position synchronization and chapter-aware navigation.
 
-- [ ] Exact word-click entry into immersive mode.
 - [ ] Immerse a selected text range.
 - [ ] Shareable reading-position links.
 - [ ] Cross-device synchronization.
