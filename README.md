@@ -97,7 +97,7 @@ Documents use stable document, section, block, and token IDs. Markdown headings 
 - Playback: `play()`, `pause()`, `playToggle()`, `restart()`, and `reset()`
 - Navigation: `preview()`, `rewind(count)`, `skipForward(count)`, and `setPosition(position)`
 - Content and speed: `loadText(text)`, `loadDocument(document)`, `setWpm(wpm)`, and `getWpm()`
-- Chapters: `continueToNextChapter()`, `getChapterState()`, and `getPendingChapterBoundary()`
+- Chapters: `continueToNextChapter()`, `reviewCompletedChapter()`, `getChapterState()`, and `getPendingChapterBoundary()`
 - State: `isPlaying()` and `getState()`
 
 `getState()` returns a new snapshot containing `isPlaying`, `wpm`, `currentIndex`, `tokenCount`, `progress`, and the shared `position`. Empty content uses `currentIndex: null`, `progress: 0`, and `position: null`.
@@ -108,7 +108,13 @@ Subscribe with `subscribe(event, listener)`. Supported events are `word`, `progr
 
 ### Chapter boundaries
 
-Structured-document playback reports chapter and document progress separately. After displaying the final token of a chapter, playback pauses before moving position and emits `chapterComplete` once for that boundary. The immersive view shows the completed title and upcoming chapter title; **Continue to next chapter** advances to the pending position. Direct rewind and forward navigation can cross boundaries without corrupting position or showing duplicate prompts.
+Structured-document playback reports chapter and document progress separately. After displaying the final token of a chapter, playback pauses before moving position and emits `chapterComplete` once for that boundary. The immersive view shows the completed title, words actually read, and the upcoming chapter title.
+
+- **Continue to next chapter** advances to the pending position.
+- **Return to document** exits at the completed chapter's final displayed token.
+- **Review chapter** restarts the completed chapter from its first readable token with a fresh countdown.
+
+Direct rewind and forward navigation can cross boundaries without corrupting position or showing duplicate prompts.
 
 ## Available commands
 

@@ -310,6 +310,9 @@ test('pauses at a chapter boundary and shows the next chapter before continuing'
   const boundaryDialog = page.getByRole('dialog', { name: 'Chapter complete' });
   await expect(boundaryDialog).toBeVisible();
   await expect(boundaryDialog).toContainText('One');
+  await expect(page.getByTestId('chapter-session-summary')).toHaveText(
+    '1 word read in this chapter'
+  );
   await expect(page.getByTestId('next-chapter-title')).toHaveText('Two');
   const continueButton = page.getByRole('button', {
     name: 'Continue to next chapter',
@@ -341,13 +344,56 @@ test('returns to the completed chapter position from a boundary', async ({
     page.getByRole('dialog', { name: 'Chapter complete' })
   ).toBeVisible();
 
-  await page.getByRole('button', { name: 'Exit' }).click();
+  await page.getByRole('button', { name: 'Return to document' }).click();
   const returnToken = page.getByTestId('return-word-highlight');
   await expect(returnToken).toHaveText('alpha');
   await expect(page.locator('#paragraph-2')).toHaveAttribute(
     'data-position-marker',
     'current-block'
   );
+});
+
+test('reviews a completed chapter from its first readable word', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await page.clock.install();
+  await openDocument(page, '# One\n\nalpha\n\n# Two\n\nbeta');
+  await page.getByRole('button', { name: 'Immerse from paragraph 2' }).click();
+  await page.clock.fastForward(4500);
+  const boundaryDialog = page.getByRole('dialog', { name: 'Chapter complete' });
+  await expect(boundaryDialog).toBeVisible();
+
+  await page.getByRole('button', { name: 'Review chapter' }).click();
+
+  await expect(boundaryDialog).toHaveCount(0);
+  await expect(page.getByText('3', { exact: true })).toBeVisible();
+  await expect(page.getByTestId('current-word')).toHaveText('alpha');
+
+  await page.getByRole('button', { name: 'Exit' }).click();
+  await expect(page.getByTestId('return-word-highlight')).toHaveText('alpha');
+});
+
+test('supports keyboard selection for every chapter-complete choice', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await page.clock.install();
+  await openDocument(page, '# One\n\nalpha\n\n# Two\n\nbeta');
+  await page.getByRole('button', { name: 'Immerse from paragraph 2' }).click();
+  await page.clock.fastForward(4500);
+
+  const continueButton = page.getByRole('button', {
+    name: 'Continue to next chapter',
+  });
+  await expect(continueButton).toBeFocused();
+  await page.keyboard.press('Shift+Tab');
+  const returnButton = page.getByRole('button', { name: 'Return to document' });
+  await expect(returnButton).toBeFocused();
+  await page.keyboard.press('Shift+Tab');
+  await expect(
+    page.getByRole('button', { name: 'Review chapter' })
+  ).toBeFocused();
 });
 
 test('uses an accessible contents drawer on tablet and mobile widths', async ({

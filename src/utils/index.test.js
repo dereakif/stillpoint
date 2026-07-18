@@ -487,6 +487,8 @@ describe('createRSVPPlayer', () => {
     expect(words).toEqual(['One', 'alpha']);
     expect(player.isPlaying()).toBe(false);
     expect(boundary.completedChapter.title).toBe('One');
+    expect(boundary.completedChapter.wordsRead).toBe(2);
+    expect(boundary.completedChapter.wordCount).toBe(2);
     expect(boundary.nextChapter.title).toBe('Two');
     expect(boundary.nextPosition).toEqual({
       blockId: 'paragraph-3',
@@ -524,6 +526,26 @@ describe('createRSVPPlayer', () => {
     await completed;
 
     expect(promptCount).toBe(1);
+  });
+
+  test('reviews a completed chapter from its first readable token', async () => {
+    const document = createDocumentModel('# One\n\nalpha\n\n# Two\n\nbeta');
+    const player = createRSVPPlayer(document, { baseWpm: 800 });
+    const boundaryReached = new Promise((resolve) => {
+      player.subscribe('chapterComplete', resolve);
+    });
+
+    player.play();
+    await boundaryReached;
+    player.reviewCompletedChapter();
+
+    expect(player.isPlaying()).toBe(false);
+    expect(player.getPendingChapterBoundary()).toBeNull();
+    expect(player.getState().position).toEqual({
+      blockId: 'paragraph-2',
+      tokenOffset: 0,
+      sectionId: 'section-1',
+    });
   });
 
   test('keeps direct navigation correct across chapter boundaries', async () => {

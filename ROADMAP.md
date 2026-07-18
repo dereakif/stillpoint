@@ -279,12 +279,12 @@ Navigation mode should support scrolling, skimming, searching, and choosing wher
 
 - [x] Design a calm chapter-complete interstitial.
 - [x] Show the completed chapter title.
-- [ ] Show optional session information such as reading time and words read.
+- [x] Show optional session information such as reading time and words read.
 - [x] Add **Continue to next chapter**.
-- [ ] Add **Return to document**.
-- [ ] Add **Review chapter** if it is meaningfully different from returning.
+- [x] Add **Return to document**.
+- [x] Add **Review chapter** if it is meaningfully different from returning.
 - [x] Support keyboard selection.
-- [ ] Restore the correct position after either choice.
+- [x] Restore the correct position after every choice.
 
 ## Completion behavior settings
 

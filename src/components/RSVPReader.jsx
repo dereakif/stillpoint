@@ -263,6 +263,12 @@ const RSVPReader = ({
             setChapterBoundary(null);
             engineRef.current.continueToNextChapter();
           }}
+          onReturn={exitImmersiveMode}
+          onReview={() => {
+            setChapterBoundary(null);
+            engineRef.current.reviewCompletedChapter();
+            startCountdown();
+          }}
         />
       )}
 

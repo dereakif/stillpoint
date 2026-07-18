@@ -1,6 +1,6 @@
 import { ArrowRight } from 'lucide-react';
 
-const ChapterBoundary = ({ boundary, onContinue }) => {
+const ChapterBoundary = ({ boundary, onContinue, onReturn, onReview }) => {
   const completedTitle =
     boundary.completedChapter.title ||
     `Section ${boundary.completedChapter.number}`;
@@ -22,6 +22,15 @@ const ChapterBoundary = ({ boundary, onContinue }) => {
           {completedTitle}
         </h2>
 
+        <p
+          data-testid="chapter-session-summary"
+          className="mt-3 text-sm text-base-content/55"
+        >
+          {boundary.completedChapter.wordsRead}{' '}
+          {boundary.completedChapter.wordsRead === 1 ? 'word' : 'words'} read in
+          this chapter
+        </p>
+
         <div className="mx-auto my-8 h-px w-16 bg-base-300" />
 
         <p className="text-sm text-base-content/55">Up next</p>
@@ -32,15 +41,23 @@ const ChapterBoundary = ({ boundary, onContinue }) => {
           {nextTitle}
         </p>
 
-        <button
-          type="button"
-          autoFocus
-          className="btn btn-primary mt-8"
-          onClick={onContinue}
-        >
-          Continue to next chapter
-          <ArrowRight className="size-4" />
-        </button>
+        <div className="mt-8 flex flex-col items-stretch justify-center gap-3 sm:flex-row">
+          <button type="button" className="btn btn-ghost" onClick={onReview}>
+            Review chapter
+          </button>
+          <button type="button" className="btn btn-soft" onClick={onReturn}>
+            Return to document
+          </button>
+          <button
+            type="button"
+            autoFocus
+            className="btn btn-primary"
+            onClick={onContinue}
+          >
+            Continue to next chapter
+            <ArrowRight className="size-4" />
+          </button>
+        </div>
       </div>
     </div>
   );

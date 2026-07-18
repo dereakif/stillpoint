@@ -648,6 +648,7 @@ export const createRSVPPlayer = (
           .map((section) => ({ id: section.id, title: section.title }));
   let pendingChapterBoundary = null;
   const promptedChapterBoundaries = new Set();
+  const readTokenIndices = new Set();
 
   const listeners = {
     word: new Set(),
@@ -735,10 +736,33 @@ export const createRSVPPlayer = (
       return null;
     }
 
+    const firstChapterTokenIndex = tokens.findIndex(
+      (token) => token.sectionId === completedChapter.id
+    );
+    const firstReadableChapterTokenIndex = tokens.findIndex(
+      (token) =>
+        token.sectionId === completedChapter.id && token.blockType !== 'heading'
+    );
+    const completedStartIndex =
+      firstReadableChapterTokenIndex === -1
+        ? firstChapterTokenIndex
+        : firstReadableChapterTokenIndex;
+    const completedWordCount = tokens.filter(
+      (token) => token.sectionId === completedChapter.id
+    ).length;
+    const wordsRead = [...readTokenIndices].filter(
+      (readIndex) => tokens[readIndex]?.sectionId === completedChapter.id
+    ).length;
+
     return {
       id: `${completedChapter.id}->${nextChapter.id}`,
-      completedChapter,
+      completedChapter: {
+        ...completedChapter,
+        wordCount: completedWordCount,
+        wordsRead,
+      },
       nextChapter,
+      completedStartIndex,
       nextIndex: tokenIndex + 1,
       nextPosition: tokenIndexToPosition(tokens, tokenIndex + 1),
     };
@@ -747,6 +771,7 @@ export const createRSVPPlayer = (
   const emitCurrentToken = () => {
     if (!tokens.length || index >= tokens.length) return;
 
+    if (playing) readTokenIndices.add(index);
     emit('word', tokens[index]);
     emit('progress', (index + 1) / tokens.length);
     emit('chapterProgress', getChapterState(index));
@@ -804,6 +829,7 @@ export const createRSVPPlayer = (
     chapterDefinitions = [];
     pendingChapterBoundary = null;
     promptedChapterBoundaries.clear();
+    readTokenIndices.clear();
     index = 0;
   };
 
@@ -818,6 +844,7 @@ export const createRSVPPlayer = (
       .map((section) => ({ id: section.id, title: section.title }));
     pendingChapterBoundary = null;
     promptedChapterBoundaries.clear();
+    readTokenIndices.clear();
     index = 0;
   };
 
@@ -849,6 +876,13 @@ export const createRSVPPlayer = (
     player.play();
   };
 
+  player.reviewCompletedChapter = () => {
+    if (!pendingChapterBoundary) return;
+    const chapterStart = pendingChapterBoundary.completedStartIndex;
+    pendingChapterBoundary = null;
+    jumpTo(chapterStart);
+  };
+
   player.getPendingChapterBoundary = () => pendingChapterBoundary;
   player.getChapterState = () => getChapterState();
 
@@ -863,6 +897,8 @@ export const createRSVPPlayer = (
   player.reset = () => {
     player.pause();
     pendingChapterBoundary = null;
+    promptedChapterBoundaries.clear();
+    readTokenIndices.clear();
     index = 0;
     emitCurrentToken();
   };
@@ -870,6 +906,8 @@ export const createRSVPPlayer = (
   player.restart = () => {
     player.pause();
     pendingChapterBoundary = null;
+    promptedChapterBoundaries.clear();
+    readTokenIndices.clear();
     index = 0;
     player.play();
   };
