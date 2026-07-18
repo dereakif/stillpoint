@@ -6,6 +6,8 @@ const TableOfContents = ({
   compact = false,
   onNavigate,
   onStartReading,
+  chapterCompletionBehavior,
+  onChapterCompletionBehaviorChange,
 }) => (
   <nav aria-label="Table of contents" className="min-w-0">
     <ol className="space-y-1">
@@ -70,6 +72,24 @@ const TableOfContents = ({
         );
       })}
     </ol>
+
+    {!compact && onChapterCompletionBehaviorChange && (
+      <label className="mt-6 block border-t border-base-300/70 px-2 pt-5 text-xs text-base-content/55">
+        At chapter end
+        <select
+          aria-label="Chapter completion behavior"
+          className="select select-sm mt-2 w-full"
+          value={chapterCompletionBehavior}
+          onChange={(event) =>
+            onChapterCompletionBehaviorChange(event.target.value)
+          }
+        >
+          <option value="ask">Ask what to do</option>
+          <option value="continue">Continue automatically</option>
+          <option value="return">Return to document</option>
+        </select>
+      </label>
+    )}
   </nav>
 );
 

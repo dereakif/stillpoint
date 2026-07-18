@@ -387,6 +387,9 @@ test('supports keyboard selection for every chapter-complete choice', async ({
     name: 'Continue to next chapter',
   });
   await expect(continueButton).toBeFocused();
+  await expect(
+    page.getByRole('combobox', { name: 'Chapter completion behavior' })
+  ).toHaveValue('ask');
   await page.keyboard.press('Shift+Tab');
   const returnButton = page.getByRole('button', { name: 'Return to document' });
   await expect(returnButton).toBeFocused();
@@ -394,6 +397,116 @@ test('supports keyboard selection for every chapter-complete choice', async ({
   await expect(
     page.getByRole('button', { name: 'Review chapter' })
   ).toBeFocused();
+});
+
+test('cancels automatic chapter continuation back to the Ask prompt', async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    window.localStorage.setItem(
+      'stillpoint.chapterCompletionBehavior',
+      'continue'
+    );
+  });
+  await page.goto('/');
+  await page.clock.install();
+  await openDocument(page, '# One\n\nalpha\n\n# Two\n\nbeta');
+  await page.getByRole('button', { name: 'Immerse from paragraph 2' }).click();
+  await page.clock.fastForward(4500);
+
+  const automaticDialog = page.getByRole('dialog', {
+    name: 'Continuing to next chapter',
+  });
+  await expect(automaticDialog).toBeVisible();
+  await expect(page.getByTestId('automatic-next-chapter-title')).toHaveText(
+    'Two'
+  );
+  await expect(page.getByTestId('automatic-continue-countdown')).toHaveText(
+    '3'
+  );
+  await page.clock.fastForward(2000);
+  await expect(page.getByTestId('automatic-continue-countdown')).toHaveText(
+    '1'
+  );
+
+  await page
+    .getByRole('button', { name: 'Cancel automatic continuation' })
+    .click();
+  await expect(automaticDialog).toHaveCount(0);
+  await expect(
+    page.getByRole('dialog', { name: 'Chapter complete' })
+  ).toBeVisible();
+  await page.clock.fastForward(5000);
+  await expect(page.getByTestId('current-word')).toHaveText('alpha');
+});
+
+test('continues automatically after the cancelable countdown', async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    window.localStorage.setItem(
+      'stillpoint.chapterCompletionBehavior',
+      'continue'
+    );
+  });
+  await page.goto('/');
+  await page.clock.install();
+  await openDocument(page, '# One\n\nalpha\n\n# Two\n\nbeta');
+  await page.getByRole('button', { name: 'Immerse from paragraph 2' }).click();
+  await page.clock.fastForward(4500);
+  await expect(
+    page.getByRole('dialog', { name: 'Continuing to next chapter' })
+  ).toBeVisible();
+
+  await page.clock.fastForward(3000);
+  await expect(
+    page.getByRole('dialog', { name: 'Continuing to next chapter' })
+  ).toHaveCount(0);
+  await expect(page.getByTestId('current-word')).toHaveText('Two');
+});
+
+test('returns to the document automatically at a chapter boundary', async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    window.localStorage.setItem(
+      'stillpoint.chapterCompletionBehavior',
+      'return'
+    );
+  });
+  await page.goto('/');
+  await page.clock.install();
+  await openDocument(page, '# One\n\nalpha\n\n# Two\n\nbeta');
+  await page.getByRole('button', { name: 'Immerse from paragraph 2' }).click();
+  await page.clock.fastForward(4500);
+
+  await expect(
+    page.getByRole('article', { name: 'Document content' })
+  ).toBeVisible();
+  await expect(page.getByTestId('return-word-highlight')).toHaveText('alpha');
+  await expect(
+    page.getByRole('dialog', { name: 'Chapter complete' })
+  ).toHaveCount(0);
+});
+
+test('persists the selected chapter completion behavior', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto('/');
+  const source = '# One\n\nalpha\n\n# Two\n\nbeta';
+  await openDocument(page, source);
+
+  const behaviorSelect = page.getByRole('combobox', {
+    name: 'Chapter completion behavior',
+  });
+  await expect(behaviorSelect).toHaveValue('ask');
+  await behaviorSelect.selectOption('continue');
+  await expect(behaviorSelect).toHaveValue('continue');
+
+  await page.reload();
+  await openDocument(page, source);
+  await expect(
+    page.getByRole('combobox', { name: 'Chapter completion behavior' })
+  ).toHaveValue('continue');
 });
 
 test('uses an accessible contents drawer on tablet and mobile widths', async ({

@@ -5,6 +5,21 @@ import DocumentView from './components/DocumentView';
 import { createDocumentModel, tokenIndexToPosition } from './utils';
 
 const MODE_TRANSITION_DURATION = 800;
+const CHAPTER_COMPLETION_STORAGE_KEY = 'stillpoint.chapterCompletionBehavior';
+const CHAPTER_COMPLETION_BEHAVIORS = new Set(['ask', 'continue', 'return']);
+
+const getInitialChapterCompletionBehavior = () => {
+  try {
+    const savedBehavior = window.localStorage.getItem(
+      CHAPTER_COMPLETION_STORAGE_KEY
+    );
+    return CHAPTER_COMPLETION_BEHAVIORS.has(savedBehavior)
+      ? savedBehavior
+      : 'ask';
+  } catch {
+    return 'ask';
+  }
+};
 
 function App() {
   const [document, setDocument] = useState(() =>
@@ -15,6 +30,9 @@ function App() {
   const [returnContext, setReturnContext] = useState(null);
   const [readingSessionId, setReadingSessionId] = useState(0);
   const [hasStartedImmersive, setHasStartedImmersive] = useState(false);
+  const [chapterCompletionBehavior, setChapterCompletionBehavior] = useState(
+    getInitialChapterCompletionBehavior
+  );
   const returnSequenceRef = useRef(0);
   const exitTimerRef = useRef(null);
   const isExitingRef = useRef(false);
@@ -27,6 +45,17 @@ function App() {
   );
 
   const text = document.source.text;
+
+  const updateChapterCompletionBehavior = (behavior) => {
+    if (!CHAPTER_COMPLETION_BEHAVIORS.has(behavior)) return;
+    setChapterCompletionBehavior(behavior);
+
+    try {
+      window.localStorage.setItem(CHAPTER_COMPLETION_STORAGE_KEY, behavior);
+    } catch {
+      // The setting remains active for this session if storage is unavailable.
+    }
+  };
 
   const saveDocument = (newText) => {
     const newDocument = createDocumentModel(newText, {
@@ -91,6 +120,8 @@ function App() {
           returnContext={returnContext}
           isImmersive={mode === 'immersive'}
           showEntryHint={!hasStartedImmersive}
+          chapterCompletionBehavior={chapterCompletionBehavior}
+          onChapterCompletionBehaviorChange={updateChapterCompletionBehavior}
           onEdit={() => setMode('edit')}
           onStartReading={startReading}
         />
@@ -103,6 +134,8 @@ function App() {
           onDocumentChange={setDocument}
           readingPosition={readingPosition}
           onReadingPositionChange={setReadingPosition}
+          chapterCompletionBehavior={chapterCompletionBehavior}
+          onChapterCompletionBehaviorChange={updateChapterCompletionBehavior}
           isExiting={mode === 'returning'}
           onExit={exitReading}
         />

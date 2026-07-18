@@ -116,6 +116,14 @@ Structured-document playback reports chapter and document progress separately. A
 
 Direct rewind and forward navigation can cross boundaries without corrupting position or showing duplicate prompts.
 
+### Chapter completion behavior
+
+The **At chapter end** control is available with the table of contents and in the chapter-complete prompt. The selected behavior is stored in local browser storage.
+
+- **Ask what to do** is the default and shows all chapter-complete choices.
+- **Continue automatically** shows the upcoming title and a three-second countdown. Canceling the countdown returns to the Ask prompt without moving position.
+- **Return to document** immediately exits at the completed chapter's final token.
+
 ## Available commands
 
 ```sh

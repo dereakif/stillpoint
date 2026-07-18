@@ -11,6 +11,8 @@ const DocumentView = ({
   returnContext,
   isImmersive = false,
   showEntryHint = false,
+  chapterCompletionBehavior = 'ask',
+  onChapterCompletionBehaviorChange,
   onEdit,
   onStartReading,
 }) => {
@@ -425,6 +427,10 @@ const DocumentView = ({
             compact={isContentsCollapsed}
             onNavigate={navigateToSection}
             onStartReading={onStartReading}
+            chapterCompletionBehavior={chapterCompletionBehavior}
+            onChapterCompletionBehaviorChange={
+              onChapterCompletionBehaviorChange
+            }
           />
         </aside>
 
@@ -639,6 +645,10 @@ const DocumentView = ({
                 setIsContentsDrawerOpen(false);
                 onStartReading(position);
               }}
+              chapterCompletionBehavior={chapterCompletionBehavior}
+              onChapterCompletionBehaviorChange={
+                onChapterCompletionBehaviorChange
+              }
             />
           </div>
         </div>

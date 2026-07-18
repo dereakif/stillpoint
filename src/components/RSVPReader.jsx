@@ -3,12 +3,15 @@ import { createDocumentModel, createRSVPPlayer } from '../utils';
 import WordDisplay from './WordDisplay';
 import Toolbar from './Toolbar';
 import ChapterBoundary from './ChapterBoundary';
+import ChapterAutoContinue from './ChapterAutoContinue';
 
 const RSVPReader = ({
   document,
   onDocumentChange,
   readingPosition,
   onReadingPositionChange,
+  chapterCompletionBehavior = 'ask',
+  onChapterCompletionBehaviorChange,
   isExiting = false,
   onExit,
 }) => {
@@ -17,11 +20,17 @@ const RSVPReader = ({
   const countdownTimerRef = useRef(null);
   const playTimerRef = useRef(null);
   const entryFrameRef = useRef(null);
+  const automaticContinueTimerRef = useRef(null);
+  const chapterCompletionBehaviorRef = useRef(chapterCompletionBehavior);
+  const onExitRef = useRef(onExit);
+  chapterCompletionBehaviorRef.current = chapterCompletionBehavior;
+  onExitRef.current = onExit;
 
   const [countdown, setCountdown] = useState(3);
   const [isReady, setIsReady] = useState(false);
   const [isEntered, setIsEntered] = useState(false);
   const [chapterBoundary, setChapterBoundary] = useState(null);
+  const [automaticContinuation, setAutomaticContinuation] = useState(null);
 
   if (engineRef.current === null) {
     engineRef.current = createRSVPPlayer(document, {
@@ -29,6 +38,11 @@ const RSVPReader = ({
       initialPosition: readingPosition,
     });
   }
+
+  const clearAutomaticContinuation = () => {
+    window.clearInterval(automaticContinueTimerRef.current);
+    automaticContinueTimerRef.current = null;
+  };
 
   const clearCountdownTimers = () => {
     window.clearInterval(countdownTimerRef.current);
@@ -86,7 +100,27 @@ const RSVPReader = ({
 
     engine.pause();
     clearCountdownTimers();
+    clearAutomaticContinuation();
     onExit(engine.getState().position);
+  };
+
+  const beginAutomaticContinuation = (boundary) => {
+    clearAutomaticContinuation();
+    let remaining = 3;
+    setAutomaticContinuation({ boundary, countdown: remaining });
+
+    automaticContinueTimerRef.current = window.setInterval(() => {
+      remaining -= 1;
+
+      if (remaining === 0) {
+        clearAutomaticContinuation();
+        setAutomaticContinuation(null);
+        engineRef.current.continueToNextChapter();
+        return;
+      }
+
+      setAutomaticContinuation({ boundary, countdown: remaining });
+    }, 1000);
   };
 
   const loadClipboard = async () => {
@@ -103,6 +137,8 @@ const RSVPReader = ({
       });
 
       onDocumentChange(newDocument);
+      clearAutomaticContinuation();
+      setAutomaticContinuation(null);
       setChapterBoundary(null);
       engineRef.current.loadDocument(newDocument);
       startCountdown();
@@ -119,13 +155,24 @@ const RSVPReader = ({
     );
     const unsubscribeChapterComplete = engine.subscribe(
       'chapterComplete',
-      setChapterBoundary
+      (boundary) => {
+        if (chapterCompletionBehaviorRef.current === 'continue') {
+          beginAutomaticContinuation(boundary);
+          return;
+        }
+        if (chapterCompletionBehaviorRef.current === 'return') {
+          onExitRef.current(engine.getState().position);
+          return;
+        }
+        setChapterBoundary(boundary);
+      }
     );
 
     return () => {
       unsubscribePosition();
       unsubscribeChapterComplete();
     };
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [onReadingPositionChange]);
 
   useEffect(() => {
@@ -139,6 +186,7 @@ const RSVPReader = ({
     return () => {
       window.cancelAnimationFrame(entryFrameRef.current);
       clearCountdownTimers();
+      clearAutomaticContinuation();
       engineRef.current?.pause();
     };
   }, []);
@@ -256,6 +304,19 @@ const RSVPReader = ({
         </div>
       )}
 
+      {automaticContinuation && (
+        <ChapterAutoContinue
+          boundary={automaticContinuation.boundary}
+          countdown={automaticContinuation.countdown}
+          onCancel={() => {
+            const pendingBoundary = automaticContinuation.boundary;
+            clearAutomaticContinuation();
+            setAutomaticContinuation(null);
+            setChapterBoundary(pendingBoundary);
+          }}
+        />
+      )}
+
       {chapterBoundary && (
         <ChapterBoundary
           boundary={chapterBoundary}
@@ -264,6 +325,8 @@ const RSVPReader = ({
             engineRef.current.continueToNextChapter();
           }}
           onReturn={exitImmersiveMode}
+          chapterCompletionBehavior={chapterCompletionBehavior}
+          onChapterCompletionBehaviorChange={onChapterCompletionBehaviorChange}
           onReview={() => {
             setChapterBoundary(null);
             engineRef.current.reviewCompletedChapter();
@@ -272,7 +335,9 @@ const RSVPReader = ({
         />
       )}
 
-      {isReady && !chapterBoundary && <Toolbar engineRef={engineRef} />}
+      {isReady && !chapterBoundary && !automaticContinuation && (
+        <Toolbar engineRef={engineRef} />
+      )}
     </section>
   );
 };

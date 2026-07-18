@@ -288,23 +288,23 @@ Navigation mode should support scrolling, skimming, searching, and choosing wher
 
 ## Completion behavior settings
 
-- [ ] Add **Ask what to do** mode.
-- [ ] Add **Continue automatically** mode.
-- [ ] Add **Return to document** mode.
-- [ ] Use Ask mode as the initial default.
-- [ ] Add a short cancelable countdown before automatic continuation.
-- [ ] Persist the selected behavior.
-- [ ] Add tests for all chapter-completion modes.
+- [x] Add **Ask what to do** mode.
+- [x] Add **Continue automatically** mode.
+- [x] Add **Return to document** mode.
+- [x] Use Ask mode as the initial default.
+- [x] Add a short cancelable countdown before automatic continuation.
+- [x] Persist the selected behavior.
+- [x] Add tests for all chapter-completion modes.
 
 ## Completion criteria
 
-- [ ] Navigation mode presents a calm, responsive document workspace rather than a dashboard.
-- [ ] Structured documents display a usable table of contents.
-- [ ] Readers can enter immersive mode from an exact word, paragraph, heading, or chapter.
-- [ ] Returning from immersion centers and marks the exact current token while retaining a block marker.
-- [ ] Chapter navigation and immersive position remain synchronized.
-- [ ] Chapter completion behavior follows the selected setting.
-- [ ] Documents without headings still work correctly.
+- [x] Navigation mode presents a calm, responsive document workspace rather than a dashboard.
+- [x] Structured documents display a usable table of contents.
+- [x] Readers can enter immersive mode from an exact word, paragraph, heading, or chapter.
+- [x] Returning from immersion centers and marks the exact current token while retaining a block marker.
+- [x] Chapter navigation and immersive position remain synchronized.
+- [x] Chapter completion behavior follows the selected setting.
+- [x] Documents without headings still work correctly.
 
 ---
 

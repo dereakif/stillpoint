@@ -1,6 +1,13 @@
 import { ArrowRight } from 'lucide-react';
 
-const ChapterBoundary = ({ boundary, onContinue, onReturn, onReview }) => {
+const ChapterBoundary = ({
+  boundary,
+  onContinue,
+  onReturn,
+  onReview,
+  chapterCompletionBehavior,
+  onChapterCompletionBehaviorChange,
+}) => {
   const completedTitle =
     boundary.completedChapter.title ||
     `Section ${boundary.completedChapter.number}`;
@@ -40,6 +47,22 @@ const ChapterBoundary = ({ boundary, onContinue, onReturn, onReview }) => {
         >
           {nextTitle}
         </p>
+
+        <label className="mx-auto mt-7 block max-w-xs text-left text-xs text-base-content/55">
+          At future chapter endings
+          <select
+            aria-label="Chapter completion behavior"
+            className="select select-sm mt-2 w-full"
+            value={chapterCompletionBehavior}
+            onChange={(event) =>
+              onChapterCompletionBehaviorChange(event.target.value)
+            }
+          >
+            <option value="ask">Ask what to do</option>
+            <option value="continue">Continue automatically</option>
+            <option value="return">Return to document</option>
+          </select>
+        </label>
 
         <div className="mt-8 flex flex-col items-stretch justify-center gap-3 sm:flex-row">
           <button type="button" className="btn btn-ghost" onClick={onReview}>
