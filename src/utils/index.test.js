@@ -174,6 +174,25 @@ describe('createRSVPPlayer', () => {
     expect(player.isPlaying()).toBe(false);
   });
 
+  test('starts from the beginning when played after completion', async () => {
+    const player = createRSVPPlayer('alpha', { baseWpm: 800 });
+    const words = [];
+    const completed = new Promise((resolve) => {
+      player.onComplete = resolve;
+    });
+
+    player.onWord = (token) => words.push(token.text);
+    player.play();
+    await completed;
+
+    player.onComplete = null;
+    player.play();
+
+    expect(words).toEqual(['alpha', 'alpha']);
+    expect(player.isPlaying()).toBe(true);
+    player.pause();
+  });
+
   test('pauses playback and emits play-state changes', () => {
     const player = createRSVPPlayer('alpha beta');
     const states = [];
@@ -198,6 +217,53 @@ describe('createRSVPPlayer', () => {
     player.skipForward(100);
 
     expect(words).toEqual(['alpha', 'gamma', 'beta', 'alpha', 'delta']);
+  });
+
+  test('reports displayed-token progress consistently during navigation', () => {
+    const player = createRSVPPlayer('alpha beta gamma');
+    const progress = [];
+
+    player.onProgress = (value) => progress.push(value);
+    player.preview();
+    player.skipForward(2);
+    player.rewind(1);
+
+    expect(progress).toEqual([1 / 3, 1, 2 / 3]);
+  });
+
+  test('supports explicit reset and restart commands', () => {
+    const player = createRSVPPlayer('alpha beta');
+    const words = [];
+
+    player.onWord = (token) => words.push(token.text);
+    player.skipForward(1);
+    player.reset();
+    expect(player.isPlaying()).toBe(false);
+    player.restart();
+
+    expect(words).toEqual(['beta', 'alpha', 'alpha']);
+    expect(player.isPlaying()).toBe(true);
+    player.pause();
+  });
+
+  test('handles playback and navigation safely when no tokens exist', () => {
+    const player = createRSVPPlayer('   ');
+    const words = [];
+    const progress = [];
+
+    player.onWord = (token) => words.push(token);
+    player.onProgress = (value) => progress.push(value);
+
+    player.preview();
+    player.play();
+    player.rewind();
+    player.skipForward();
+    player.reset();
+    player.restart();
+
+    expect(words).toEqual([]);
+    expect(progress).toEqual([]);
+    expect(player.isPlaying()).toBe(false);
   });
 
   test('clamps WPM and reports changes', () => {

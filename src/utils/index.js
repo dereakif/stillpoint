@@ -197,18 +197,25 @@ export const createRSVPPlayer = (text, { baseWpm = 300 } = {}) => {
     onChangeWpm: null,
   };
 
+  const emitCurrentToken = () => {
+    if (!tokens.length || index >= tokens.length) return;
+
+    player.onWord?.(tokens[index]);
+    player.onProgress?.((index + 1) / tokens.length);
+  };
+
   const scheduleNext = () => {
     if (!playing || index >= tokens.length) {
-      if (index >= tokens.length) {
+      if (index >= tokens.length && tokens.length) {
         playing = false;
         player.onPlayStateChange?.(false);
-        player.onComplete?.(); // read live off `player`, not a closed-over var
+        player.onComplete?.();
       }
       return;
     }
+
     const token = tokens[index];
-    player.onWord?.(token);
-    player.onProgress?.((index + 1) / tokens.length);
+    emitCurrentToken();
     const duration = computeWordDuration(token, wpm);
     timerId = setTimeout(() => {
       index += 1;
@@ -218,20 +225,13 @@ export const createRSVPPlayer = (text, { baseWpm = 300 } = {}) => {
 
   const jumpTo = (newIndex) => {
     player.pause();
-    index = Math.max(0, Math.min(tokens.length - 1, newIndex));
-    const token = tokens[index];
-    player.onWord?.(token);
-    player.onProgress?.(index / tokens.length);
-  };
-
-  player.preview = () => {
     if (!tokens.length) return;
 
-    const token = tokens[index];
-
-    player.onWord?.(token);
-    player.onProgress?.((index + 1) / tokens.length);
+    index = Math.max(0, Math.min(tokens.length - 1, newIndex));
+    emitCurrentToken();
   };
+
+  player.preview = emitCurrentToken;
 
   player.loadText = (newText) => {
     player.pause();
@@ -241,11 +241,15 @@ export const createRSVPPlayer = (text, { baseWpm = 300 } = {}) => {
   };
 
   player.play = () => {
-    if (!playing) {
-      playing = true;
-      player.onPlayStateChange?.(true);
-      scheduleNext();
+    if (playing || !tokens.length) return;
+
+    if (index >= tokens.length) {
+      index = 0;
     }
+
+    playing = true;
+    player.onPlayStateChange?.(true);
+    scheduleNext();
   };
 
   player.pause = () => {
@@ -260,6 +264,18 @@ export const createRSVPPlayer = (text, { baseWpm = 300 } = {}) => {
     } else {
       player.play();
     }
+  };
+
+  player.reset = () => {
+    player.pause();
+    index = 0;
+    emitCurrentToken();
+  };
+
+  player.restart = () => {
+    player.pause();
+    index = 0;
+    player.play();
   };
 
   player.rewind = (n = 5) => jumpTo(index - n);
@@ -278,8 +294,6 @@ export const createRSVPPlayer = (text, { baseWpm = 300 } = {}) => {
   };
 
   player.getWpm = () => wpm;
-
-  // ...rewind, skipForward, setWpm as before, all reading/writing the same closure vars
 
   return player;
 };

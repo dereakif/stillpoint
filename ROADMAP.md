@@ -28,14 +28,14 @@ Prepare the current application for shared position state and larger product fea
 
 ## Player behavior
 
-- [ ] Define what happens when Play is pressed after reaching the end of a document.
-- [ ] Add explicit `restart` or `reset` behavior to the RSVP engine.
-- [ ] Define one consistent meaning for progress values.
-- [ ] Make preview, playback, rewind, and forward use the same progress calculation.
-- [ ] Make navigation commands safe when the document contains no tokens.
+- [x] Define what happens when Play is pressed after reaching the end of a document.
+- [x] Add explicit `restart` or `reset` behavior to the RSVP engine.
+- [x] Define one consistent meaning for progress values.
+- [x] Make preview, playback, rewind, and forward use the same progress calculation.
+- [x] Make navigation commands safe when the document contains no tokens.
 - [ ] Decide whether pause/resume redisplays the current word or resumes its remaining duration.
 - [ ] Decide how a WPM change affects the currently displayed word.
-- [ ] Add tests for completion, restart, empty input, and progress consistency.
+- [x] Add tests for completion, restart, empty input, and progress consistency.
 
 ## Engine integration
 
@@ -59,7 +59,7 @@ Prepare the current application for shared position state and larger product fea
 ## Completion criteria
 
 - [ ] Playback has documented and tested end, restart, pause, and progress semantics.
-- [ ] Empty documents cannot crash the player.
+- [x] Empty documents cannot crash the player.
 - [ ] UI components can subscribe to engine events without replacing one another.
 - [ ] Critical immersive-mode lifecycle behavior is covered in a real browser.
 
