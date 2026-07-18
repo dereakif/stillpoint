@@ -5,6 +5,7 @@ import {
   createDocumentParagraphs,
   createRSVPPlayer,
   getParagraphTokenRange,
+  getReadingPositionSummary,
   normalizeText,
   positionToTokenIndex,
   splitAtORP,
@@ -176,6 +177,41 @@ describe('reading position conversion', () => {
       positionToTokenIndex(tokens, { blockId: 'missing', tokenOffset: 0 })
     ).toBe(0);
     expect(tokenIndexToPosition([], 0)).toBeNull();
+  });
+});
+
+describe('getReadingPositionSummary', () => {
+  test('reports paragraph, word, and document progress consistently', () => {
+    expect(
+      getReadingPositionSummary('one two\n\nthree four five', {
+        blockId: 'paragraph-2',
+        tokenOffset: 1,
+      })
+    ).toEqual({
+      paragraphNumber: 2,
+      paragraphCount: 2,
+      wordNumber: 2,
+      wordCount: 3,
+      documentWordNumber: 4,
+      documentWordCount: 5,
+      progress: 4 / 5,
+      percentage: 80,
+    });
+  });
+
+  test('uses the first readable token for a missing position', () => {
+    expect(getReadingPositionSummary('alpha beta', null)).toEqual(
+      expect.objectContaining({
+        paragraphNumber: 1,
+        wordNumber: 1,
+        documentWordNumber: 1,
+        percentage: 50,
+      })
+    );
+  });
+
+  test('returns null when the document has no readable tokens', () => {
+    expect(getReadingPositionSummary('  \n\n  ', null)).toBeNull();
   });
 });
 

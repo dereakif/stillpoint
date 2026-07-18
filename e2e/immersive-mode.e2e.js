@@ -50,6 +50,63 @@ test('renders document paragraphs and returns to editing', async ({ page }) => {
   );
 });
 
+test('shows synchronized navigation progress and resume context', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await page.clock.install();
+  await openDocument(page, 'one two\n\nthree four five');
+
+  await expect(page.getByTestId('current-position-status')).toHaveText(
+    'Paragraph 1 of 2 · Word 1 of 2'
+  );
+  await expect(page.getByTestId('document-progress-value')).toHaveText('20%');
+  await expect(
+    page.getByRole('progressbar', { name: 'Document progress' })
+  ).toHaveAttribute('value', '20');
+  await expect(
+    page.getByRole('button', { name: /Resume reading Paragraph 1 · 20%/ })
+  ).toBeVisible();
+
+  await page.getByRole('button', { name: 'Immerse from paragraph 2' }).click();
+  await page.clock.fastForward(3000);
+  await expect(page.getByRole('button', { name: 'Play' })).toBeVisible();
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Escape');
+
+  await expect(page.getByTestId('current-position-status')).toHaveText(
+    'Paragraph 2 of 2 · Word 3 of 3'
+  );
+  await expect(page.getByTestId('document-progress-value')).toHaveText('100%');
+  await expect(
+    page.getByRole('button', { name: /Resume reading Paragraph 2 · 100%/ })
+  ).toBeVisible();
+});
+
+test('keeps navigation controls usable at a 400% zoom reflow width', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 320, height: 720 });
+  await page.goto('/');
+  await openDocument(page, 'Readable content remains available at high zoom.');
+
+  const editButton = page.getByRole('button', { name: 'Edit document' });
+  const resumeButton = page.getByRole('button', { name: /Resume reading/ });
+  await expect(editButton).toBeVisible();
+  await expect(resumeButton).toBeVisible();
+
+  await page.keyboard.press('Tab');
+  await expect(editButton).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(resumeButton).toBeFocused();
+
+  const layout = await page.evaluate(() => ({
+    clientWidth: document.documentElement.clientWidth,
+    scrollWidth: document.documentElement.scrollWidth,
+  }));
+  expect(layout.scrollWidth).toBeLessThanOrEqual(layout.clientWidth);
+});
+
 test('starts immersive mode from a chosen paragraph by pointer or keyboard', async ({
   page,
 }) => {

@@ -11,6 +11,7 @@ The reader highlights each token's Optimal Recognition Point (ORP), adjusts timi
 - Adjustable reading speed from 100 to 800 WPM
 - Timing adjustments for punctuation, paragraphs, and longer words
 - Rewind and skip-forward controls
+- Synchronized document progress and current-position context
 - Keyboard shortcuts for playback and speed
 - Clipboard loading while in immersive mode
 - Responsive interface built with Tailwind CSS and DaisyUI

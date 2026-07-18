@@ -258,6 +258,44 @@ export const tokenIndexToPosition = (tokens, index) => {
 };
 
 /**
+ * Summarizes a shared reading position for navigation-mode controls using the
+ * same one-based displayed-token progress semantics as immersive playback.
+ *
+ * @param {string} rawText
+ * @param {ReadingPosition | null | undefined} position
+ * @returns {{ paragraphNumber: number, paragraphCount: number, wordNumber: number, wordCount: number, documentWordNumber: number, documentWordCount: number, progress: number, percentage: number } | null}
+ */
+export const getReadingPositionSummary = (rawText, position) => {
+  const tokens = tokenize(rawText);
+  if (!tokens.length) return null;
+
+  const paragraphs = createDocumentParagraphs(rawText);
+  const tokenIndex = positionToTokenIndex(tokens, position);
+  const currentPosition = tokenIndexToPosition(tokens, tokenIndex);
+  const paragraphIndex = Math.max(
+    0,
+    paragraphs.findIndex(
+      (paragraph) => paragraph.id === currentPosition.blockId
+    )
+  );
+  const paragraphWordCount = tokens.filter(
+    (token) => token.blockId === currentPosition.blockId
+  ).length;
+  const progress = (tokenIndex + 1) / tokens.length;
+
+  return {
+    paragraphNumber: paragraphIndex + 1,
+    paragraphCount: paragraphs.length,
+    wordNumber: currentPosition.tokenOffset + 1,
+    wordCount: paragraphWordCount,
+    documentWordNumber: tokenIndex + 1,
+    documentWordCount: tokens.length,
+    progress,
+    percentage: Math.round(progress * 100),
+  };
+};
+
+/**
  * @param {RSVPToken} token
  * @param {number} baseWpm
  * @param {object} [opts]

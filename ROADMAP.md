@@ -132,19 +132,19 @@ Suggested initial shape:
 
 ## Navigation-mode controls
 
-- [ ] Add document progress.
-- [ ] Add current-position status.
-- [ ] Add a Resume button with useful context.
-- [ ] Add a visible action for returning to the document editor.
-- [ ] Ensure controls remain usable at high browser zoom.
+- [x] Add document progress.
+- [x] Add current-position status.
+- [x] Add a Resume button with useful context.
+- [x] Add a visible action for returning to the document editor.
+- [x] Ensure controls remain usable at high browser zoom.
 
 ## Completion criteria
 
-- [ ] A reader can start immersive playback from a chosen paragraph.
-- [ ] Exiting returns to the correct document location.
-- [ ] Position remains synchronized after rewind, forward, pause, and resume.
-- [ ] The transition works with normal and reduced motion.
-- [ ] Navigation mode is usable without a mouse.
+- [x] A reader can start immersive playback from a chosen paragraph.
+- [x] Exiting returns to the correct document location.
+- [x] Position remains synchronized after rewind, forward, pause, and resume.
+- [x] The transition works with normal and reduced motion.
+- [x] Navigation mode is usable without a mouse.
 
 ---
 
