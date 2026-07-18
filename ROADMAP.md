@@ -237,15 +237,15 @@ Navigation mode should support scrolling, skimming, searching, and choosing wher
 
 ## Multi-level immersive entry
 
-- [ ] Let a reader activate an individual word and begin immersive playback at that exact token.
-- [ ] Let a reader activate a paragraph and begin at its first readable token.
-- [ ] Give paragraphs a subtle hover and focus-within treatment with a small **Immerse from here** action.
-- [ ] Let a reader activate a heading and begin at the following readable block rather than reading the heading itself.
-- [ ] Keep document text selectable and suppress immersive activation when the reader is selecting text.
-- [ ] Provide keyboard-accessible equivalents for word, paragraph, and heading entry without turning reading text into a noisy tab sequence.
-- [ ] Use event delegation or another scalable strategy instead of attaching heavy handlers to every rendered word.
-- [ ] Preserve token, block, and section mappings for every entry level.
-- [ ] Add browser tests for pointer, keyboard, text-selection, and exact-token entry.
+- [x] Let a reader activate an individual word and begin immersive playback at that exact token.
+- [x] Let a reader activate a paragraph and begin at its first readable token.
+- [x] Give paragraphs a subtle hover and focus-within treatment with a small **Immerse from here** action.
+- [x] Let a reader activate a heading and begin at the following readable block rather than reading the heading itself.
+- [x] Keep document text selectable and suppress immersive activation when the reader is selecting text.
+- [x] Provide keyboard-accessible equivalents for word, paragraph, and heading entry without turning reading text into a noisy tab sequence.
+- [x] Use event delegation or another scalable strategy instead of attaching heavy handlers to every rendered word.
+- [x] Preserve token, block, and section mappings for every entry level.
+- [x] Add browser tests for pointer, keyboard, text-selection, and exact-token entry.
 
 ## Exact-position return refinement
 

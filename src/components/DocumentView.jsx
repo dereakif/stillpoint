@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, Edit3, Menu, Play, X } from 'lucide-react';
-import { getParagraphTokenRange, getReadingPositionSummary } from '../utils';
+import { getReadingPositionSummary } from '../utils';
 import TableOfContents from './TableOfContents';
 
 const RETURN_HIGHLIGHT_DURATION = 2400;
@@ -37,6 +37,14 @@ const DocumentView = ({
   );
   const [isContentsCollapsed, setIsContentsCollapsed] = useState(false);
   const [isContentsDrawerOpen, setIsContentsDrawerOpen] = useState(false);
+  const [keyboardTokenId, setKeyboardTokenId] = useState(() => {
+    const token = documentModel.tokens.find(
+      (candidate) =>
+        candidate.blockId === readingPosition?.blockId &&
+        candidate.tokenOffset === readingPosition?.tokenOffset
+    );
+    return token?.id ?? documentModel.tokens[0]?.id ?? null;
+  });
   const contentsButtonRef = useRef(null);
   const drawerCloseButtonRef = useRef(null);
 
@@ -60,6 +68,15 @@ const DocumentView = ({
   useEffect(() => {
     if (readingSection) setActiveSectionId(readingSection.id);
   }, [readingSection]);
+
+  useEffect(() => {
+    const token = documentModel.tokens.find(
+      (candidate) =>
+        candidate.blockId === readingPosition?.blockId &&
+        candidate.tokenOffset === readingPosition?.tokenOffset
+    );
+    if (token) setKeyboardTokenId(token.id);
+  }, [documentModel, readingPosition]);
 
   useEffect(() => {
     if (isImmersive) return undefined;
@@ -145,6 +162,130 @@ const DocumentView = ({
     });
     anchor?.focus({ preventScroll: true });
     setIsContentsDrawerOpen(false);
+  };
+
+  const hasDocumentSelection = () => {
+    const selection = window.getSelection();
+    return Boolean(
+      selection && !selection.isCollapsed && selection.toString().trim()
+    );
+  };
+
+  const startFromDelegatedTarget = (target) => {
+    const blockElement = target.closest('[data-readable-block="true"]');
+    if (!blockElement) return false;
+
+    const entryBlockId = blockElement.dataset.entryBlockId;
+    const tokenElement = target.closest('[data-token-id]');
+    const blockType = blockElement.dataset.blockType;
+
+    if (tokenElement && blockType !== 'heading') {
+      onStartReading({
+        blockId: tokenElement.dataset.blockId,
+        tokenOffset: Number(tokenElement.dataset.tokenOffset),
+      });
+      return true;
+    }
+
+    if (entryBlockId) {
+      onStartReading({ blockId: entryBlockId, tokenOffset: 0 });
+      return true;
+    }
+
+    return false;
+  };
+
+  const handleDocumentClick = (event) => {
+    if (event.target.closest('button, a, input, textarea, select')) return;
+    if (hasDocumentSelection()) return;
+    startFromDelegatedTarget(event.target);
+  };
+
+  const handleDocumentFocus = (event) => {
+    const tokenElement = event.target.closest('[data-token-id]');
+    if (tokenElement) setKeyboardTokenId(tokenElement.dataset.tokenId);
+  };
+
+  const handleDocumentKeyDown = (event) => {
+    const tokenElement = event.target.closest('[data-token-id]');
+    if (!tokenElement) return;
+
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      startFromDelegatedTarget(tokenElement);
+      return;
+    }
+
+    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+
+    event.preventDefault();
+    const currentIndex = documentModel.tokens.findIndex(
+      (token) => token.id === tokenElement.dataset.tokenId
+    );
+    const direction = event.key === 'ArrowLeft' ? -1 : 1;
+    const nextToken =
+      documentModel.tokens[
+        Math.max(
+          0,
+          Math.min(documentModel.tokens.length - 1, currentIndex + direction)
+        )
+      ];
+    if (!nextToken) return;
+
+    setKeyboardTokenId(nextToken.id);
+    window.requestAnimationFrame(() => {
+      document
+        .querySelector(`[data-token-id="${nextToken.id}"]`)
+        ?.focus({ preventScroll: true });
+    });
+  };
+
+  const renderBlockText = (block, isReturnTarget) => {
+    if (!block.tokens.length) return block.text;
+
+    const renderedContent = [];
+    let sourceOffset = 0;
+
+    block.tokens.forEach((token) => {
+      const tokenStart = block.text.indexOf(token.text, sourceOffset);
+      if (tokenStart === -1) return;
+
+      if (tokenStart > sourceOffset) {
+        renderedContent.push(block.text.slice(sourceOffset, tokenStart));
+      }
+
+      const isKeyboardToken = token.id === keyboardTokenId;
+      const isReturnToken =
+        isReturnTarget &&
+        token.tokenOffset === returnContext.position.tokenOffset;
+
+      renderedContent.push(
+        <span
+          key={token.id}
+          role={isKeyboardToken ? 'button' : undefined}
+          tabIndex={isKeyboardToken ? 0 : -1}
+          aria-label={
+            isKeyboardToken ? `Immerse from word ${token.text}` : undefined
+          }
+          data-token-id={token.id}
+          data-block-id={token.blockId}
+          data-token-offset={token.tokenOffset}
+          data-testid={isReturnToken ? 'return-word-highlight' : undefined}
+          className={`cursor-pointer rounded-[0.2em] outline-none transition-colors motion-reduce:transition-none hover:bg-primary/12 focus:bg-primary/15 focus:ring-1 focus:ring-primary/40 ${
+            isReturnToken ? 'return-word-highlight' : ''
+          }`}
+        >
+          {token.text}
+        </span>
+      );
+      sourceOffset = tokenStart + token.text.length;
+    });
+
+    if (sourceOffset < block.text.length) {
+      renderedContent.push(block.text.slice(sourceOffset));
+    }
+
+    return renderedContent;
   };
 
   if (!paragraphs.length) {
@@ -265,18 +406,15 @@ const DocumentView = ({
           <article
             aria-label="Document content"
             className="mx-auto max-w-3xl space-y-6 px-4 pb-36 pt-10 text-lg leading-8 text-base-content/90 sm:px-8 sm:pt-14 sm:text-xl sm:leading-9"
+            onClick={handleDocumentClick}
+            onFocusCapture={handleDocumentFocus}
+            onKeyDown={handleDocumentKeyDown}
           >
             {paragraphs.map((paragraph, index) => {
               const isCurrent = paragraph.id === readingPosition?.blockId;
               const isReturnTarget =
                 showReturnHighlight &&
                 paragraph.id === returnContext?.position.blockId;
-              const tokenRange = isReturnTarget
-                ? getParagraphTokenRange(
-                    paragraph.text,
-                    returnContext.position.tokenOffset
-                  )
-                : null;
               const immersiveEntryBlock =
                 paragraph.type === 'heading'
                   ? paragraphs
@@ -324,6 +462,8 @@ const DocumentView = ({
                 >
                   <p
                     id={paragraph.id}
+                    data-readable-block="true"
+                    data-entry-block-id={immersiveEntryBlock?.id}
                     data-block-type={paragraph.type}
                     data-section-id={paragraph.sectionId}
                     tabIndex={-1}
@@ -331,29 +471,13 @@ const DocumentView = ({
                     data-token-offset={
                       isCurrent ? readingPosition.tokenOffset : undefined
                     }
-                    className={`scroll-mt-24 whitespace-pre-line border-l-2 py-2 pl-4 pr-12 transition-colors motion-reduce:transition-none ${blockTypeClass} ${
+                    className={`scroll-mt-24 whitespace-pre-line border-l-2 py-2 pl-4 pr-12 transition-colors hover:bg-base-200/20 focus-within:bg-base-200/20 motion-reduce:transition-none ${blockTypeClass} ${
                       isCurrent
                         ? 'border-primary bg-linear-to-r from-primary/7 to-transparent'
                         : 'border-transparent'
                     }`}
                   >
-                    {tokenRange ? (
-                      <>
-                        {paragraph.text.slice(0, tokenRange.start)}
-                        <mark
-                          data-testid="return-word-highlight"
-                          className="return-word-highlight"
-                        >
-                          {paragraph.text.slice(
-                            tokenRange.start,
-                            tokenRange.end
-                          )}
-                        </mark>
-                        {paragraph.text.slice(tokenRange.end)}
-                      </>
-                    ) : (
-                      paragraph.text
-                    )}
+                    {renderBlockText(paragraph, isReturnTarget)}
                   </p>
 
                   {immersiveEntryBlock && (

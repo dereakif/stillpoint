@@ -124,11 +124,89 @@ test('starts after a structured heading without reading Markdown markers', async
   await page.goto('/');
   await openDocument(page, '# Introduction\n\nFirst readable paragraph.');
 
-  await expect(page.locator('#paragraph-1')).toHaveText('Introduction');
-  await page
-    .getByRole('button', { name: 'Immerse after heading Introduction' })
-    .click();
+  const heading = page.locator('#paragraph-1');
+  await expect(heading).toHaveText('Introduction');
+  await heading.click();
   await expect(page.getByTestId('current-word')).toHaveText('First');
+});
+
+test('starts immersive reading from an exact clicked word', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await openDocument(page, 'alpha beta gamma');
+
+  const beta = page.locator(
+    '[data-block-id="paragraph-1"][data-token-offset="1"]'
+  );
+  await expect(beta).toHaveText('beta');
+  await beta.click();
+
+  await expect(page.getByTestId('current-word')).toHaveText('beta');
+});
+
+test('starts a paragraph from its first token when its reading surface is activated', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await openDocument(page, 'alpha beta gamma');
+
+  await page.locator('#paragraph-1').evaluate((paragraph) => {
+    paragraph.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  });
+
+  await expect(page.getByTestId('current-word')).toHaveText('alpha');
+});
+
+test('uses one roving keyboard target for exact-word entry', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await openDocument(page, 'alpha beta gamma');
+
+  const alpha = page.locator(
+    '[data-block-id="paragraph-1"][data-token-offset="0"]'
+  );
+  const beta = page.locator(
+    '[data-block-id="paragraph-1"][data-token-offset="1"]'
+  );
+  await expect(alpha).toHaveAttribute('tabindex', '0');
+  await expect(beta).toHaveAttribute('tabindex', '-1');
+
+  await alpha.focus();
+  await page.keyboard.press('ArrowRight');
+  await expect(beta).toBeFocused();
+  await expect(beta).toHaveAttribute('tabindex', '0');
+  await expect(alpha).toHaveAttribute('tabindex', '-1');
+
+  await page.keyboard.press('Enter');
+  await expect(page.getByTestId('current-word')).toHaveText('beta');
+});
+
+test('does not enter immersive mode while document text is selected', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await openDocument(page, 'alpha beta gamma');
+
+  const beta = page.locator(
+    '[data-block-id="paragraph-1"][data-token-offset="1"]'
+  );
+  await beta.evaluate((word) => {
+    const selection = window.getSelection();
+    const range = document.createRange();
+    range.selectNodeContents(word);
+    selection.removeAllRanges();
+    selection.addRange(range);
+    word.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  });
+
+  await expect(
+    page.getByRole('article', { name: 'Document content' })
+  ).toBeVisible();
+  await expect(
+    page.getByRole('region', { name: 'Immersive reading mode' })
+  ).toHaveCount(0);
 });
 
 test('presents a centered document workspace with desktop contents navigation', async ({

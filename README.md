@@ -45,7 +45,7 @@ Open the local URL printed by Vite.
 2. Review the detected sections. Edit a section title or add a section boundary where needed.
 3. Select **Read document** to open the rendered reading workspace.
 4. Use **Contents** to navigate sections, or collapse the desktop contents sidebar for more space.
-5. Select **Resume**, use a paragraph's **Immerse from here** action, or immerse a chapter from the contents list.
+5. Select an exact word, activate a paragraph or heading, choose **Resume**, or immerse a chapter from the contents list.
 6. Wait for the countdown to finish.
 7. Use the on-screen controls or keyboard shortcuts to control playback.
 8. Select **Exit** or press `Escape` to return to the exact reading position in the document view.
@@ -69,7 +69,9 @@ Clipboard access depends on browser support, page security, and user permission.
 
 Paragraph text remains selectable and never activates immersive mode by itself. Each paragraph has a separate keyboard-accessible **Immerse from here** action that starts at token offset `0`. **Resume reading** starts at the shared current position.
 
-Heading text remains a navigation element. Its **Immerse after heading** action begins at the following readable block rather than displaying the heading as the first RSVP token.
+Selecting a word begins at that exact token. Selecting a paragraph's open reading surface begins at its first token, while its visible **Immerse from here** action provides the same behavior. Selecting a heading begins at the following readable block rather than displaying the heading as the first RSVP token.
+
+For keyboard entry, one word at a time participates in the tab order. Focus it and use `Left Arrow` or `Right Arrow` to choose a nearby word, then press `Enter` or `Space` to immerse from that token. Paragraph and heading actions remain ordinary keyboard-accessible buttons. Selecting document text never triggers immersive mode.
 
 ### Playback semantics
 
