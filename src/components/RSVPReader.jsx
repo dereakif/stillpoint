@@ -1,11 +1,11 @@
 import { useRef, useState, useEffect } from 'react';
-import { createRSVPPlayer } from '../utils';
+import { createDocumentModel, createRSVPPlayer } from '../utils';
 import WordDisplay from './WordDisplay';
 import Toolbar from './Toolbar';
 
 const RSVPReader = ({
-  text,
-  setText,
+  document,
+  onDocumentChange,
   readingPosition,
   onReadingPositionChange,
   isExiting = false,
@@ -22,7 +22,7 @@ const RSVPReader = ({
   const [isEntered, setIsEntered] = useState(false);
 
   if (engineRef.current === null) {
-    engineRef.current = createRSVPPlayer(text, {
+    engineRef.current = createRSVPPlayer(document, {
       baseWpm: 300,
       initialPosition: readingPosition,
     });
@@ -93,9 +93,15 @@ const RSVPReader = ({
 
       if (!newText.trim()) return;
 
-      setText(newText);
+      const newDocument = createDocumentModel(newText, {
+        id: document.id,
+        title: document.title,
+        sourceFormat: document.source.format,
+        revision: document.source.revision + 1,
+      });
 
-      engineRef.current.loadText(newText);
+      onDocumentChange(newDocument);
+      engineRef.current.loadDocument(newDocument);
       startCountdown();
     } catch (error) {
       console.log(error);

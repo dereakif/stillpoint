@@ -91,7 +91,7 @@ describe('createDocumentModel', () => {
     expect(document.source).toEqual(
       expect.objectContaining({
         text: source,
-        format: 'plain-text',
+        format: 'markdown',
         revision: 1,
         rangeBasis: 'normalizedText',
       })
@@ -110,7 +110,7 @@ describe('createDocumentModel', () => {
           block.source.start,
           block.source.end
         )
-      ).toBe(block.text);
+      ).toBe(block.sourceText);
     });
   });
 
@@ -129,6 +129,87 @@ describe('createDocumentModel', () => {
       first.tokens.map((token) => token.id)
     );
     expect(reparsed.source.revision).toBe(2);
+  });
+
+  test('creates sections from Markdown headings and plain chapter labels', () => {
+    const document = createDocumentModel(
+      '# Opening\n\nFirst text.\n\n## Details\n\nSecond text.\n\nChapter 3: Finale\n\nLast text.'
+    );
+
+    expect(document.sections.map((section) => section.title)).toEqual([
+      'Opening',
+      'Details',
+      'Chapter 3: Finale',
+    ]);
+    expect(document.sections.map((section) => section.id)).toEqual([
+      'section-1',
+      'section-2',
+      'section-3',
+    ]);
+    expect(document.sections[1].blocks[0]).toEqual(
+      expect.objectContaining({
+        type: 'heading',
+        text: 'Details',
+        headingLevel: 2,
+        headingSyntax: 'markdown',
+      })
+    );
+    expect(document.sections[2].blocks[0]).toEqual(
+      expect.objectContaining({
+        type: 'heading',
+        headingSyntax: 'chapter-label',
+      })
+    );
+  });
+
+  test('keeps documents without headings in one untitled section', () => {
+    const document = createDocumentModel(
+      'A short standalone line\n\nA longer paragraph follows it.'
+    );
+
+    expect(document.sections).toHaveLength(1);
+    expect(document.sections[0].title).toBeNull();
+    expect(document.sections[0].blocks.map((block) => block.type)).toEqual([
+      'paragraph',
+      'paragraph',
+    ]);
+  });
+
+  test('preserves URLs, punctuation, and Unicode in parsed text', () => {
+    const document = createDocumentModel(
+      '## Café — 東京\n\nVisit https://example.com/a/b; déjà vu?'
+    );
+
+    expect(document.sections[0].title).toBe('Café — 東京');
+    expect(document.sections[0].blocks[1].text).toBe(
+      'Visit https://example.com/a/b; déjà vu?'
+    );
+    expect(document.tokens.map((token) => token.text)).toContain(
+      'https://example.com/a/b;'
+    );
+  });
+
+  test('treats malformed and ambiguous heading-like lines as paragraphs', () => {
+    const document = createDocumentModel(
+      '#\n\n###\n\nChapter\n\nNot a heading'
+    );
+
+    expect(document.sections).toHaveLength(1);
+    expect(document.sections[0].blocks.map((block) => block.type)).toEqual([
+      'paragraph',
+      'paragraph',
+      'paragraph',
+      'paragraph',
+    ]);
+  });
+
+  test('excludes separators from RSVP tokens', () => {
+    const document = createDocumentModel('Before.\n\n---\n\nAfter.');
+
+    expect(document.tokens.map((token) => token.text)).toEqual([
+      'Before.',
+      'After.',
+    ]);
   });
 });
 
@@ -370,6 +451,22 @@ describe('computeWordDuration', () => {
 });
 
 describe('createRSVPPlayer', () => {
+  test('uses parsed document tokens without Markdown markers', () => {
+    const document = createDocumentModel('# Heading\n\nReadable text.');
+    const player = createRSVPPlayer(document);
+    const words = [];
+
+    player.subscribe('word', (token) => words.push(token.text));
+    player.preview();
+    player.skipForward(1);
+
+    expect(words).toEqual(['Heading', 'Readable']);
+    expect(player.getState().position).toEqual({
+      blockId: 'paragraph-2',
+      tokenOffset: 0,
+    });
+  });
+
   test('plays tokens in order and reports progress and completion', async () => {
     const player = createRSVPPlayer('alpha beta gamma', { baseWpm: 800 });
     const words = [];

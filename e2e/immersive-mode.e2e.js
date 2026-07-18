@@ -50,6 +50,34 @@ test('renders document paragraphs and returns to editing', async ({ page }) => {
   );
 });
 
+test('previews and corrects detected Markdown structure', async ({ page }) => {
+  const source = '# Opening\n\nFirst.\n\n## Details\n\nSecond.';
+
+  await page.goto('/');
+  await page.getByPlaceholder('Paste your text here...').fill(source);
+
+  const structurePreview = page.getByRole('complementary', {
+    name: 'Detected document structure',
+  });
+  await expect(structurePreview).toContainText('2 sections · 4 blocks');
+  await expect(
+    page.getByRole('textbox', { name: 'Section 1 title' })
+  ).toHaveValue('Opening');
+
+  await page
+    .getByRole('textbox', { name: 'Section 2 title' })
+    .fill('Revised details');
+  await expect(page.getByPlaceholder('Paste your text here...')).toHaveValue(
+    '# Opening\n\nFirst.\n\n## Revised details\n\nSecond.'
+  );
+
+  await page.getByRole('button', { name: 'Start section at Second.' }).click();
+  await expect(structurePreview).toContainText('3 sections · 5 blocks');
+  await expect(
+    page.getByRole('textbox', { name: 'Section 3 title' })
+  ).toHaveValue('New section');
+});
+
 test('preserves source while exposing structured block metadata', async ({
   page,
 }) => {
@@ -88,6 +116,19 @@ test('preserves source while exposing structured block metadata', async ({
   await expect(page.getByPlaceholder('Paste your text here...')).toHaveValue(
     source
   );
+});
+
+test('starts after a structured heading without reading Markdown markers', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await openDocument(page, '# Introduction\n\nFirst readable paragraph.');
+
+  await expect(page.locator('#paragraph-1')).toHaveText('Introduction');
+  await page
+    .getByRole('button', { name: 'Immerse after heading Introduction' })
+    .click();
+  await expect(page.getByTestId('current-word')).toHaveText('First');
 });
 
 test('shows synchronized navigation progress and resume context', async ({

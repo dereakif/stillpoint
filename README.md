@@ -12,6 +12,7 @@ The reader highlights each token's Optimal Recognition Point (ORP), adjusts timi
 - Timing adjustments for punctuation, paragraphs, and longer words
 - Rewind and skip-forward controls
 - Synchronized document progress and current-position context
+- Markdown sections with a live structure preview
 - Keyboard shortcuts for playback and speed
 - Clipboard loading while in immersive mode
 - Responsive interface built with Tailwind CSS and DaisyUI
@@ -39,13 +40,14 @@ Open the local URL printed by Vite.
 
 ## Usage
 
-1. Paste or type text into the document editor.
-2. Select **Read document** to open the rendered reading view.
-3. Select **Resume reading**, or use a paragraph's **Immerse from here** action to begin at that paragraph.
-4. Wait for the countdown to finish.
-5. Use the on-screen controls or keyboard shortcuts to control playback.
-6. Select **Exit** or press `Escape` to return to the exact reading position in the document view.
-7. Select **Edit document** whenever you want to change the source text.
+1. Paste or type Markdown into the document editor.
+2. Review the detected sections. Edit a section title or add a section boundary where needed.
+3. Select **Read document** to open the rendered reading view.
+4. Select **Resume reading**, or use a paragraph's **Immerse from here** action to begin at that paragraph.
+5. Wait for the countdown to finish.
+6. Use the on-screen controls or keyboard shortcuts to control playback.
+7. Select **Exit** or press `Escape` to return to the exact reading position in the document view.
+8. Select **Edit document** whenever you want to change the Markdown source.
 
 ### Keyboard shortcuts
 
@@ -65,7 +67,7 @@ Clipboard access depends on browser support, page security, and user permission.
 
 Paragraph text remains selectable and never activates immersive mode by itself. Each paragraph has a separate keyboard-accessible **Immerse from here** action that starts at token offset `0`. **Resume reading** starts at the shared current position.
 
-Structured headings are planned for Phase 2. When introduced, heading clicks will remain navigation actions; immersive entry associated with a heading will begin at the following readable paragraph rather than displaying the heading as the first RSVP token.
+Heading text remains a navigation element. Its **Immerse after heading** action begins at the following readable block rather than displaying the heading as the first RSVP token.
 
 ### Playback semantics
 
@@ -78,17 +80,17 @@ Structured headings are planned for Phase 2. When introduced, heading clicks wil
 
 `createDocumentModel(sourceText, options)` creates the versioned model used by the application. The original source remains available at `document.source.text`, while normalized source ranges, sections, classified blocks, and RSVP token mappings are stored separately for navigation and future reparsing.
 
-Documents use stable document, section, block, and token IDs. Blocks currently classify heading, paragraph, quote, list, and separator shapes without changing their source text. `document.tokenToBlock` maps every structured token ID back to its section, block, and token offset.
+Documents use stable document, section, block, and token IDs. Markdown headings and plain-text chapter labels create sections; quotes, lists, separators, and paragraphs become typed blocks. Original source remains unchanged while parsed block text omits structural Markdown markers. Short standalone lines remain paragraphs unless they use explicit heading syntax or match a chapter label. `document.tokenToBlock` maps every structured token ID back to its section, block, and token offset.
 
 ## RSVP player API
 
-`createRSVPPlayer(text, options)` returns an immutable public interface. Internal timers, tokens, and listener collections remain private.
+`createRSVPPlayer(content, options)` accepts either plain text or a structured document model and returns an immutable public interface. Internal timers, tokens, and listener collections remain private.
 
 ### Commands and state
 
 - Playback: `play()`, `pause()`, `playToggle()`, `restart()`, and `reset()`
 - Navigation: `preview()`, `rewind(count)`, `skipForward(count)`, and `setPosition(position)`
-- Content and speed: `loadText(text)`, `setWpm(wpm)`, and `getWpm()`
+- Content and speed: `loadText(text)`, `loadDocument(document)`, `setWpm(wpm)`, and `getWpm()`
 - State: `isPlaying()` and `getState()`
 
 `getState()` returns a new snapshot containing `isPlaying`, `wpm`, `currentIndex`, `tokenCount`, `progress`, and the shared `position`. Empty content uses `currentIndex: null`, `progress: 0`, and `position: null`.

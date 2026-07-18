@@ -225,23 +225,185 @@ export const tokenize = (rawText) => {
   return tokens;
 };
 
-const classifyDocumentBlock = (text) => {
-  const lines = text.split('\n').map((line) => line.trim());
+const MARKDOWN_HEADING_PATTERN = /^ {0,3}(#{1,6})[ \t]+(.+?)\s*#*\s*$/;
+const CHAPTER_LABEL_PATTERN =
+  /^chapter\s+(?:\d+|[ivxlcdm]+|[a-z]+)(?:\s*[:.\-–—]\s*.*|\s+.*)?$/i;
+const LIST_ITEM_PATTERN = /^\s*(?:[-+*]|\d+[.)])\s+(.+)$/;
+const SEPARATOR_PATTERN = /^\s*(?:-{3,}|\*{3,}|_{3,})\s*$/;
 
-  if (/^(?:-{3,}|\*{3,}|_{3,})$/.test(text.trim())) return 'separator';
-  if (/^#{1,6}\s+\S/.test(lines[0])) return 'heading';
-  if (lines.every((line) => /^>\s*\S/.test(line))) return 'quote';
-  if (lines.every((line) => /^(?:[-+*]|\d+[.)])\s+\S/.test(line))) {
-    return 'list';
+const parseDocumentBlocks = (normalizedText) => {
+  const lines = normalizedText.split('\n');
+  const lineOffsets = [];
+  let offset = 0;
+
+  lines.forEach((line) => {
+    lineOffsets.push(offset);
+    offset += line.length + 1;
+  });
+
+  const blocks = [];
+  let lineIndex = 0;
+
+  const addBlock = (startLine, endLine, details) => {
+    const start = lineOffsets[startLine];
+    const end = lineOffsets[endLine] + lines[endLine].length;
+    const sourceText = normalizedText.slice(start, end);
+
+    blocks.push({
+      id: `paragraph-${blocks.length + 1}`,
+      ...details,
+      sourceText,
+      source: { start, end },
+      sectionId: null,
+      tokens: [],
+    });
+  };
+
+  while (lineIndex < lines.length) {
+    if (!lines[lineIndex].trim()) {
+      lineIndex += 1;
+      continue;
+    }
+
+    const line = lines[lineIndex];
+    const trimmedLine = line.trim();
+    const headingMatch = line.match(MARKDOWN_HEADING_PATTERN);
+
+    if (headingMatch) {
+      addBlock(lineIndex, lineIndex, {
+        type: 'heading',
+        text: headingMatch[2].trim(),
+        headingLevel: headingMatch[1].length,
+        headingSyntax: 'markdown',
+      });
+      lineIndex += 1;
+      continue;
+    }
+
+    if (CHAPTER_LABEL_PATTERN.test(trimmedLine)) {
+      addBlock(lineIndex, lineIndex, {
+        type: 'heading',
+        text: trimmedLine,
+        headingLevel: 1,
+        headingSyntax: 'chapter-label',
+      });
+      lineIndex += 1;
+      continue;
+    }
+
+    if (SEPARATOR_PATTERN.test(line)) {
+      addBlock(lineIndex, lineIndex, {
+        type: 'separator',
+        text: trimmedLine,
+      });
+      lineIndex += 1;
+      continue;
+    }
+
+    if (/^\s*>/.test(line)) {
+      const startLine = lineIndex;
+      const quoteLines = [];
+
+      while (lineIndex < lines.length && /^\s*>/.test(lines[lineIndex])) {
+        quoteLines.push(lines[lineIndex].replace(/^\s*>\s?/, ''));
+        lineIndex += 1;
+      }
+
+      addBlock(startLine, lineIndex - 1, {
+        type: 'quote',
+        text: quoteLines.join('\n').trim(),
+      });
+      continue;
+    }
+
+    if (LIST_ITEM_PATTERN.test(line)) {
+      const startLine = lineIndex;
+      const items = [];
+
+      while (
+        lineIndex < lines.length &&
+        LIST_ITEM_PATTERN.test(lines[lineIndex])
+      ) {
+        items.push(lines[lineIndex].match(LIST_ITEM_PATTERN)[1].trim());
+        lineIndex += 1;
+      }
+
+      addBlock(startLine, lineIndex - 1, {
+        type: 'list',
+        text: items.join('\n'),
+        items,
+      });
+      continue;
+    }
+
+    const startLine = lineIndex;
+    const paragraphLines = [];
+
+    while (lineIndex < lines.length && lines[lineIndex].trim()) {
+      if (
+        paragraphLines.length &&
+        (MARKDOWN_HEADING_PATTERN.test(lines[lineIndex]) ||
+          CHAPTER_LABEL_PATTERN.test(lines[lineIndex].trim()) ||
+          SEPARATOR_PATTERN.test(lines[lineIndex]) ||
+          /^\s*>/.test(lines[lineIndex]) ||
+          LIST_ITEM_PATTERN.test(lines[lineIndex]))
+      ) {
+        break;
+      }
+
+      paragraphLines.push(lines[lineIndex].trim());
+      lineIndex += 1;
+    }
+
+    addBlock(startLine, lineIndex - 1, {
+      type: 'paragraph',
+      text: paragraphLines.join('\n').trim(),
+    });
   }
 
-  return 'paragraph';
+  return blocks;
+};
+
+const createSections = (blocks) => {
+  const sections = [];
+  let currentSection = null;
+
+  const startSection = (title = null, headingBlockId = null) => {
+    currentSection = {
+      id: `section-${sections.length + 1}`,
+      title,
+      headingBlockId,
+      blockIds: [],
+      blocks: [],
+    };
+    sections.push(currentSection);
+  };
+
+  blocks.forEach((block) => {
+    if (block.type === 'heading') {
+      if (!currentSection || currentSection.blocks.length) {
+        startSection(block.text, block.id);
+      } else {
+        currentSection.title = block.text;
+        currentSection.headingBlockId = block.id;
+      }
+    } else if (!currentSection) {
+      startSection();
+    }
+
+    block.sectionId = currentSection.id;
+    currentSection.blockIds.push(block.id);
+    currentSection.blocks.push(block);
+  });
+
+  if (!sections.length) startSection();
+  return sections;
 };
 
 /**
- * Creates the versioned document model used by navigation, editing, and future
- * structured importers. Source text remains intact and separate from parsed
- * sections, blocks, and tokens.
+ * Parses Markdown-oriented source into the versioned document model used by
+ * editing, navigation, and immersive playback. Source text remains intact and
+ * separate from parsed sections, blocks, and tokens.
  *
  * IDs are deterministic within a document revision. Callers should preserve
  * the document ID when reparsing edited source.
@@ -254,64 +416,50 @@ export const createDocumentModel = (
   {
     id = 'document-1',
     title = 'Untitled document',
-    sourceFormat = 'plain-text',
+    sourceFormat = 'markdown',
     revision = 1,
   } = {}
 ) => {
   const normalizedText = rawText.replace(/\r\n?/g, '\n');
-  const paragraphs = createDocumentParagraphs(normalizedText);
-  const sectionId = 'section-1';
-  let sourceSearchFrom = 0;
+  const blocks = parseDocumentBlocks(normalizedText);
+  const sections = createSections(blocks);
+  const tokens = [];
 
-  const blocks = paragraphs.map((paragraph) => {
-    const sourceStart = normalizedText.indexOf(
-      paragraph.text,
-      sourceSearchFrom
-    );
-    const start = sourceStart === -1 ? sourceSearchFrom : sourceStart;
-    const end = start + paragraph.text.length;
-    sourceSearchFrom = end;
+  blocks.forEach((block) => {
+    if (block.type === 'separator') return;
 
-    return {
-      id: paragraph.id,
-      type: classifyDocumentBlock(paragraph.text),
-      text: paragraph.text,
-      sectionId,
-      source: { start, end },
-      tokens: [],
-    };
+    let sourceSearchFrom = 0;
+    tokenize(block.text).forEach((token) => {
+      const localStart = block.sourceText.indexOf(token.text, sourceSearchFrom);
+      const localEnd = localStart === -1 ? -1 : localStart + token.text.length;
+
+      if (localEnd !== -1) sourceSearchFrom = localEnd;
+
+      const structuredToken = {
+        ...token,
+        id: `token-${tokens.length + 1}`,
+        sectionId: block.sectionId,
+        blockId: block.id,
+        blockType: block.type,
+        tokenOffset: block.tokens.length,
+        isParagraphEnd: false,
+        source:
+          localStart === -1
+            ? null
+            : {
+                start: block.source.start + localStart,
+                end: block.source.start + localEnd,
+              },
+      };
+
+      block.tokens.push(structuredToken);
+      tokens.push(structuredToken);
+    });
   });
 
-  const blockById = Object.fromEntries(
-    blocks.map((block) => [block.id, block])
-  );
-  const blockTokenSearchOffsets = new Map();
-  const tokens = tokenize(normalizedText).map((token, index) => {
-    const block = blockById[token.blockId];
-    const localSearchFrom = blockTokenSearchOffsets.get(token.blockId) ?? 0;
-    const localStart = block?.text.indexOf(token.text, localSearchFrom) ?? -1;
-    const localEnd = localStart === -1 ? -1 : localStart + token.text.length;
-
-    if (localEnd !== -1) {
-      blockTokenSearchOffsets.set(token.blockId, localEnd);
-    }
-
-    const structuredToken = {
-      ...token,
-      id: `token-${index + 1}`,
-      sectionId,
-      blockType: block?.type ?? 'paragraph',
-      source:
-        block && localStart !== -1
-          ? {
-              start: block.source.start + localStart,
-              end: block.source.start + localEnd,
-            }
-          : null,
-    };
-
-    block?.tokens.push(structuredToken);
-    return structuredToken;
+  const readableBlocks = blocks.filter((block) => block.tokens.length);
+  readableBlocks.slice(0, -1).forEach((block) => {
+    block.tokens.at(-1).isParagraphEnd = true;
   });
 
   return {
@@ -325,14 +473,7 @@ export const createDocumentModel = (
       revision,
       rangeBasis: 'normalizedText',
     },
-    sections: [
-      {
-        id: sectionId,
-        title: null,
-        blockIds: blocks.map((block) => block.id),
-        blocks,
-      },
-    ],
+    sections,
     tokens,
     tokenToBlock: Object.fromEntries(
       tokens.map((token) => [
@@ -387,15 +528,20 @@ export const tokenIndexToPosition = (tokens, index) => {
  * Summarizes a shared reading position for navigation-mode controls using the
  * same one-based displayed-token progress semantics as immersive playback.
  *
- * @param {string} rawText
+ * @param {string | { tokens: RSVPToken[], sections: object[] }} content
  * @param {ReadingPosition | null | undefined} position
  * @returns {{ paragraphNumber: number, paragraphCount: number, wordNumber: number, wordCount: number, documentWordNumber: number, documentWordCount: number, progress: number, percentage: number } | null}
  */
-export const getReadingPositionSummary = (rawText, position) => {
-  const tokens = tokenize(rawText);
+export const getReadingPositionSummary = (content, position) => {
+  const isDocumentModel = typeof content !== 'string';
+  const tokens = isDocumentModel ? content.tokens : tokenize(content);
   if (!tokens.length) return null;
 
-  const paragraphs = createDocumentParagraphs(rawText);
+  const paragraphs = isDocumentModel
+    ? content.sections
+        .flatMap((section) => section.blocks)
+        .filter((block) => block.tokens.length)
+    : createDocumentParagraphs(content);
   const tokenIndex = positionToTokenIndex(tokens, position);
   const currentPosition = tokenIndexToPosition(tokens, tokenIndex);
   const paragraphIndex = Math.max(
@@ -475,14 +621,14 @@ export const computeWordDuration = (token, baseWpm, opts = {}) => {
 /**
  * Creates an RSVP player with a stable command, state, and event interface.
  *
- * @param {string} text
+ * @param {string | { tokens: RSVPToken[] }} content
  * @param {{ baseWpm?: number, initialPosition?: ReadingPosition | null }} [options]
  */
 export const createRSVPPlayer = (
-  text,
+  content,
   { baseWpm = 300, initialPosition = null } = {}
 ) => {
-  let tokens = tokenize(text);
+  let tokens = typeof content === 'string' ? tokenize(content) : content.tokens;
   let index = positionToTokenIndex(tokens, initialPosition);
   let timerId = null;
   let playing = false;
@@ -564,6 +710,13 @@ export const createRSVPPlayer = (
     player.pause();
 
     tokens = tokenize(newText);
+    index = 0;
+  };
+
+  player.loadDocument = (documentModel) => {
+    player.pause();
+
+    tokens = documentModel.tokens;
     index = 0;
   };
 

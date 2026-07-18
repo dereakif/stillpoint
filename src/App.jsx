@@ -27,17 +27,6 @@ function App() {
 
   const text = document.source.text;
 
-  const replaceDocumentText = (newText) => {
-    setDocument((currentDocument) =>
-      createDocumentModel(newText, {
-        id: currentDocument.id,
-        title: currentDocument.title,
-        sourceFormat: currentDocument.source.format,
-        revision: currentDocument.source.revision + 1,
-      })
-    );
-  };
-
   const saveDocument = (newText) => {
     const newDocument = createDocumentModel(newText, {
       id: document.id,
@@ -107,8 +96,8 @@ function App() {
       {(mode === 'immersive' || mode === 'returning') && (
         <RSVPReader
           key={readingSessionId}
-          text={text}
-          setText={replaceDocumentText}
+          document={document}
+          onDocumentChange={setDocument}
           readingPosition={readingPosition}
           onReadingPositionChange={setReadingPosition}
           isExiting={mode === 'returning'}

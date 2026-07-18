@@ -1,10 +1,44 @@
-import { FileText, X } from 'lucide-react';
-import { useState } from 'react';
+import { FileText, ListTree, X } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { createDocumentModel } from '../utils';
 
 const DocumentEditor = ({ text, onSave, onCancel }) => {
   const [draft, setDraft] = useState(text);
+  const previewDocument = useMemo(
+    () => createDocumentModel(draft, { sourceFormat: 'markdown' }),
+    [draft]
+  );
+
+  const replaceSourceRange = (range, replacement) => {
+    const normalizedDraft = draft.replace(/\r\n?/g, '\n');
+    setDraft(
+      normalizedDraft.slice(0, range.start) +
+        replacement +
+        normalizedDraft.slice(range.end)
+    );
+  };
+
+  const updateSectionTitle = (section, newTitle) => {
+    const heading = section.blocks.find(
+      (block) => block.id === section.headingBlockId
+    );
+    if (!heading) return;
+
+    replaceSourceRange(
+      heading.source,
+      `${'#'.repeat(heading.headingLevel ?? 2)} ${newTitle}`
+    );
+  };
+
+  const startSectionAt = (block) => {
+    replaceSourceRange(
+      { start: block.source.start, end: block.source.start },
+      '## New section\n\n'
+    );
+  };
+
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-6 py-12">
+    <div className="mx-auto flex w-full max-w-5xl min-w-0 flex-col gap-6 overflow-x-clip px-4 py-8 sm:px-6 sm:py-12">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Stillpoint</h1>
 
@@ -13,21 +47,99 @@ const DocumentEditor = ({ text, onSave, onCancel }) => {
         </p>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-        <div className="flex items-center gap-2 border-b border-border px-5 py-3">
-          <FileText className="size-4 text-muted-foreground" />
-          <span className="text-sm font-medium">Document</span>
+      <div className="grid min-w-0 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
+        <div className="min-w-0 overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+          <div className="flex items-center gap-2 border-b border-border px-5 py-3">
+            <FileText className="size-4 text-muted-foreground" />
+            <span className="text-sm font-medium">Markdown document</span>
+          </div>
+
+          <textarea
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+            placeholder="Paste your text here..."
+            aria-describedby="markdown-format-help"
+            className="min-h-100 w-full resize-y bg-transparent p-5 leading-8 text-foreground outline-none placeholder:text-muted-foreground"
+          />
+          <p
+            id="markdown-format-help"
+            className="border-t border-border px-5 py-3 text-sm text-base-content/65"
+          >
+            Use Markdown headings such as <code># Chapter title</code> to create
+            sections. Labels such as <code>Chapter 1</code> are also detected;
+            other short standalone lines remain paragraphs.
+          </p>
         </div>
 
-        <textarea
-          value={draft}
-          onChange={(event) => setDraft(event.target.value)}
-          placeholder="Paste your text here..."
-          className="min-h-100 w-full resize-y bg-transparent p-5 leading-8 text-foreground outline-none placeholder:text-muted-foreground"
-        />
+        <aside
+          aria-label="Detected document structure"
+          className="min-w-0 max-w-full overflow-hidden rounded-2xl border border-border bg-card p-4 shadow-sm"
+        >
+          <div className="flex items-center gap-2">
+            <ListTree className="size-4 text-primary" />
+            <h2 className="font-semibold">Structure preview</h2>
+          </div>
+          <p className="mt-1 text-sm text-base-content/65">
+            {previewDocument.sections.length}{' '}
+            {previewDocument.sections.length === 1 ? 'section' : 'sections'} ·{' '}
+            {previewDocument.sections.reduce(
+              (count, section) => count + section.blocks.length,
+              0
+            )}{' '}
+            blocks
+          </p>
+
+          <ol className="mt-4 space-y-4">
+            {previewDocument.sections.map((section, sectionIndex) => (
+              <li
+                key={section.id}
+                className="rounded-xl border border-base-300 p-3"
+              >
+                <label className="text-xs font-medium text-base-content/60">
+                  Section {sectionIndex + 1}
+                  <input
+                    type="text"
+                    aria-label={`Section ${sectionIndex + 1} title`}
+                    value={section.title ?? ''}
+                    placeholder="Untitled section"
+                    disabled={!section.headingBlockId}
+                    onChange={(event) =>
+                      updateSectionTitle(section, event.target.value)
+                    }
+                    className="input input-sm mt-1 w-full"
+                  />
+                </label>
+
+                <ul className="mt-3 space-y-2">
+                  {section.blocks.map((block) => (
+                    <li
+                      key={block.id}
+                      className="flex min-w-0 items-center justify-between gap-2 text-xs"
+                    >
+                      <span className="min-w-0 truncate">
+                        <span className="mr-2 text-primary">{block.type}</span>
+                        {block.text || 'Separator'}
+                      </span>
+                      {block.type !== 'heading' && (
+                        <button
+                          type="button"
+                          className="btn btn-ghost btn-xs shrink-0"
+                          aria-label={`Start section at ${block.text || 'separator'}`}
+                          onClick={() => startSectionAt(block)}
+                        >
+                          Start section
+                        </button>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </li>
+            ))}
+          </ol>
+        </aside>
       </div>
 
-      <div className="flex justify-end gap-3">
+      <div className="relative z-20 flex flex-wrap justify-end gap-3 bg-base-100 py-2">
         {onCancel && (
           <button
             type="button"

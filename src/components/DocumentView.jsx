@@ -12,11 +12,13 @@ const DocumentView = ({
   onEdit,
   onStartReading,
 }) => {
-  const text = documentModel.source.text;
   const paragraphs = documentModel.sections.flatMap(
     (section) => section.blocks
   );
-  const positionSummary = getReadingPositionSummary(text, readingPosition);
+  const positionSummary = getReadingPositionSummary(
+    documentModel,
+    readingPosition
+  );
   const [showReturnHighlight, setShowReturnHighlight] = useState(
     Boolean(returnContext)
   );
@@ -155,6 +157,17 @@ const DocumentView = ({
                 returnContext.position.tokenOffset
               )
             : null;
+          const immersiveEntryBlock =
+            paragraph.type === 'heading'
+              ? paragraphs
+                  .slice(index + 1)
+                  .find(
+                    (candidate) =>
+                      candidate.type !== 'heading' && candidate.tokens.length
+                  )
+              : paragraph.tokens.length
+                ? paragraph
+                : null;
 
           return (
             <div
@@ -198,16 +211,25 @@ const DocumentView = ({
                 )}
               </p>
 
-              <button
-                type="button"
-                aria-label={`Immerse from paragraph ${index + 1}`}
-                className="btn btn-circle btn-ghost btn-sm absolute right-3 top-3 opacity-70 transition-opacity motion-reduce:transition-none hover:opacity-100 focus:opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
-                onClick={() =>
-                  onStartReading({ blockId: paragraph.id, tokenOffset: 0 })
-                }
-              >
-                <Play className="size-4 fill-current" />
-              </button>
+              {immersiveEntryBlock && (
+                <button
+                  type="button"
+                  aria-label={
+                    paragraph.type === 'heading'
+                      ? `Immerse after heading ${paragraph.text}`
+                      : `Immerse from paragraph ${index + 1}`
+                  }
+                  className="btn btn-circle btn-ghost btn-sm absolute right-3 top-3 opacity-70 transition-opacity motion-reduce:transition-none hover:opacity-100 focus:opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
+                  onClick={() =>
+                    onStartReading({
+                      blockId: immersiveEntryBlock.id,
+                      tokenOffset: 0,
+                    })
+                  }
+                >
+                  <Play className="size-4 fill-current" />
+                </button>
+              )}
             </div>
           );
         })}

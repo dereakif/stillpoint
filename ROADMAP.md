@@ -184,16 +184,15 @@ Suggested direction:
 
 ## Import and parsing
 
-- [ ] Choose the first structured input format, preferably Markdown.
-- [ ] Parse Markdown headings into sections.
-- [ ] Detect plain-text chapter labels such as `Chapter 1`.
-- [ ] Decide how short standalone lines are treated.
-- [ ] Provide a preview of detected document structure.
-- [ ] Let the reader correct titles and chapter boundaries.
-- [ ] Handle documents with no headings as one section.
-- [ ] Preserve URLs, punctuation, paragraph breaks, and Unicode text.
-- [ ] Add parser tests for malformed and ambiguous input.
-
+- [x] Choose the first structured input format, preferably Markdown.
+- [x] Parse Markdown headings into sections.
+- [x] Detect plain-text chapter labels such as `Chapter 1`.
+- [x] Decide how short standalone lines are treated.
+- [x] Provide a preview of detected document structure.
+- [x] Let the reader correct titles and chapter boundaries.
+- [x] Handle documents with no headings as one section.
+- [x] Preserve URLs, punctuation, paragraph breaks, and Unicode text.
+- [x] Add parser tests for malformed and ambiguous input.
 
 
 ## Table of contents
