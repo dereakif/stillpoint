@@ -131,6 +131,113 @@ test('starts after a structured heading without reading Markdown markers', async
   await expect(page.getByTestId('current-word')).toHaveText('First');
 });
 
+test('presents a centered document workspace with desktop contents navigation', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto('/');
+  await openDocument(
+    page,
+    '# Introduction\n\nWelcome to the document.\n\n## Basics\n\nLearn the essentials.\n\n## Summary\n\nReview the ideas.'
+  );
+
+  await expect(page.getByTestId('document-top-bar')).toContainText(
+    'Introduction'
+  );
+  const desktopContents = page.getByTestId('desktop-table-of-contents');
+  await expect(desktopContents).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Contents', exact: true })
+  ).toBeHidden();
+  await expect(page.getByTestId('document-status-bar')).toHaveCSS(
+    'position',
+    'fixed'
+  );
+
+  const articleWidth = await page
+    .getByRole('article', { name: 'Document content' })
+    .evaluate((article) => article.getBoundingClientRect().width);
+  expect(articleWidth).toBeLessThanOrEqual(768);
+
+  const collapseButton = page.getByRole('button', {
+    name: 'Collapse contents',
+  });
+  const expandedWidth = await desktopContents.evaluate(
+    (contents) => contents.getBoundingClientRect().width
+  );
+  await collapseButton.click();
+  await expect(
+    page.getByRole('button', { name: 'Expand contents' })
+  ).toBeVisible();
+  await page.waitForTimeout(350);
+  const collapsedWidth = await desktopContents.evaluate(
+    (contents) => contents.getBoundingClientRect().width
+  );
+  expect(collapsedWidth).toBeLessThan(expandedWidth);
+});
+
+test('navigates and immerses by chapter from the table of contents', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 700 });
+  await page.goto('/');
+  await openDocument(
+    page,
+    '# Introduction\n\nWelcome to the document.\n\n## Basics\n\nLearn the essentials.'
+  );
+
+  const contents = page.getByRole('navigation', {
+    name: 'Table of contents',
+  });
+  const basicsLink = contents.getByRole('button', {
+    name: 'Basics',
+    exact: true,
+  });
+  await basicsLink.click();
+
+  await expect(page).toHaveURL(/#section-2$/);
+  await expect(basicsLink).toHaveAttribute('aria-current', 'location');
+  await expect(page.locator('#paragraph-3')).toBeFocused();
+  await expect(
+    page.getByRole('region', { name: 'Immersive reading mode' })
+  ).toHaveCount(0);
+
+  await contents.getByRole('button', { name: 'Immerse Basics' }).click();
+  await expect(page.getByTestId('current-word')).toHaveText('Learn');
+});
+
+test('uses an accessible contents drawer on tablet and mobile widths', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 768, height: 800 });
+  await page.goto('/');
+  await openDocument(
+    page,
+    '# Introduction\n\nWelcome.\n\n## Basics\n\nLearn more.'
+  );
+
+  const contentsButton = page.getByRole('button', { name: 'Contents' });
+  await expect(contentsButton).toBeVisible();
+  await expect(page.getByTestId('desktop-table-of-contents')).toBeHidden();
+
+  await contentsButton.click();
+  const drawer = page.getByRole('dialog', { name: 'Document contents' });
+  await expect(drawer).toBeVisible();
+  await expect(
+    drawer.getByRole('button', { name: 'Close contents' })
+  ).toBeFocused();
+
+  await page.keyboard.press('Escape');
+  await expect(drawer).toHaveCount(0);
+  await expect(contentsButton).toBeFocused();
+
+  await contentsButton.click();
+  await drawer.getByRole('button', { name: 'Basics', exact: true }).click();
+  await expect(drawer).toHaveCount(0);
+  await expect(page).toHaveURL(/#section-2$/);
+  await expect(page.locator('#paragraph-3')).toBeFocused();
+});
+
 test('shows synchronized navigation progress and resume context', async ({
   page,
 }) => {
@@ -171,14 +278,18 @@ test('keeps navigation controls usable at a 400% zoom reflow width', async ({
   await page.goto('/');
   await openDocument(page, 'Readable content remains available at high zoom.');
 
+  const contentsButton = page.getByRole('button', { name: 'Contents' });
   const editButton = page.getByRole('button', { name: 'Edit document' });
   const resumeButton = page.getByRole('button', { name: /Resume reading/ });
+  await expect(contentsButton).toBeVisible();
   await expect(editButton).toBeVisible();
   await expect(resumeButton).toBeVisible();
 
-  await page.keyboard.press('Tab');
+  await contentsButton.focus();
+  await expect(contentsButton).toBeFocused();
+  await editButton.focus();
   await expect(editButton).toBeFocused();
-  await page.keyboard.press('Tab');
+  await resumeButton.focus();
   await expect(resumeButton).toBeFocused();
 
   const layout = await page.evaluate(() => ({

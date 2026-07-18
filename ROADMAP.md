@@ -214,26 +214,26 @@ Navigation mode should support scrolling, skimming, searching, and choosing wher
 └──────────────────────────────────────────────────────────────┘
 ```
 
-- [ ] Replace the current card-like document header with a restrained workspace shell.
-- [ ] Add a minimal top bar containing Stillpoint, the document title, and only actions that are currently available.
-- [ ] Reserve natural top-bar locations for Search in Phase 4 and Theme in Phase 3 without showing inactive placeholder controls.
-- [ ] Keep the document column centered with a comfortable reading measure independent of sidebar width.
-- [ ] Use whitespace, typography, and subtle dividers instead of a card-heavy dashboard treatment.
-- [ ] Keep document content visually primary while controls remain discoverable by keyboard and pointer.
-- [ ] Define tablet behavior for the top bar, document column, and collapsed contents navigation.
-- [ ] Define mobile behavior with a contents drawer, reflowed top bar, safe-area spacing, and no horizontal overflow.
-- [ ] Add responsive browser tests for desktop, tablet, narrow mobile, and high zoom.
+- [x] Replace the current card-like document header with a restrained workspace shell.
+- [x] Add a minimal top bar containing Stillpoint, the document title, and only actions that are currently available.
+- [x] Reserve natural top-bar locations for Search in Phase 4 and Theme in Phase 3 without showing inactive placeholder controls.
+- [x] Keep the document column centered with a comfortable reading measure independent of sidebar width.
+- [x] Use whitespace, typography, and subtle dividers instead of a card-heavy dashboard treatment.
+- [x] Keep document content visually primary while controls remain discoverable by keyboard and pointer.
+- [x] Define tablet behavior for the top bar, document column, and collapsed contents navigation.
+- [x] Define mobile behavior with a contents drawer, reflowed top bar, safe-area spacing, and no horizontal overflow.
+- [x] Add responsive browser tests for desktop, tablet, narrow mobile, and high zoom.
 
 ## Table of contents
 
-- [ ] Add a narrow, collapsible desktop table-of-contents sidebar on the left.
-- [ ] Add a collapsed tablet treatment that does not reduce the document to an uncomfortable width.
-- [ ] Add a mobile table-of-contents drawer or sheet.
-- [ ] Highlight the current chapter.
-- [ ] Let readers jump to a chapter without entering immersive mode.
-- [ ] Add an **Immerse chapter** action.
-- [ ] Keep the URL or application state synchronized with the selected chapter if routing is introduced.
-- [ ] Ensure table-of-contents controls are keyboard and screen-reader accessible.
+- [x] Add a narrow, collapsible desktop table-of-contents sidebar on the left.
+- [x] Add a collapsed tablet treatment that does not reduce the document to an uncomfortable width.
+- [x] Add a mobile table-of-contents drawer or sheet.
+- [x] Highlight the current chapter.
+- [x] Let readers jump to a chapter without entering immersive mode.
+- [x] Add an **Immerse chapter** action.
+- [x] Keep the URL or application state synchronized with the selected chapter if routing is introduced.
+- [x] Ensure table-of-contents controls are keyboard and screen-reader accessible.
 
 ## Multi-level immersive entry
 

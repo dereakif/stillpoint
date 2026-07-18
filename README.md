@@ -13,6 +13,7 @@ The reader highlights each token's Optimal Recognition Point (ORP), adjusts timi
 - Rewind and skip-forward controls
 - Synchronized document progress and current-position context
 - Markdown sections with a live structure preview
+- Calm document workspace with responsive table-of-contents navigation
 - Keyboard shortcuts for playback and speed
 - Clipboard loading while in immersive mode
 - Responsive interface built with Tailwind CSS and DaisyUI
@@ -42,12 +43,13 @@ Open the local URL printed by Vite.
 
 1. Paste or type Markdown into the document editor.
 2. Review the detected sections. Edit a section title or add a section boundary where needed.
-3. Select **Read document** to open the rendered reading view.
-4. Select **Resume reading**, or use a paragraph's **Immerse from here** action to begin at that paragraph.
-5. Wait for the countdown to finish.
-6. Use the on-screen controls or keyboard shortcuts to control playback.
-7. Select **Exit** or press `Escape` to return to the exact reading position in the document view.
-8. Select **Edit document** whenever you want to change the Markdown source.
+3. Select **Read document** to open the rendered reading workspace.
+4. Use **Contents** to navigate sections, or collapse the desktop contents sidebar for more space.
+5. Select **Resume**, use a paragraph's **Immerse from here** action, or immerse a chapter from the contents list.
+6. Wait for the countdown to finish.
+7. Use the on-screen controls or keyboard shortcuts to control playback.
+8. Select **Exit** or press `Escape` to return to the exact reading position in the document view.
+9. Select **Edit document** whenever you want to change the Markdown source.
 
 ### Keyboard shortcuts
 
