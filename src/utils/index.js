@@ -106,6 +106,35 @@ export const createDocumentParagraphs = (rawText) =>
     .filter(Boolean)
     .map((text, index) => ({ id: `paragraph-${index + 1}`, text }));
 
+/**
+ * Locates an RSVP token within its original paragraph text so navigation mode
+ * can highlight it without changing the document's whitespace or punctuation.
+ *
+ * @param {string} paragraphText
+ * @param {number} tokenOffset
+ * @returns {{ start: number, end: number } | null}
+ */
+export const getParagraphTokenRange = (paragraphText, tokenOffset) => {
+  if (!Number.isInteger(tokenOffset) || tokenOffset < 0) return null;
+
+  const tokens = tokenize(paragraphText);
+  if (tokenOffset >= tokens.length) return null;
+
+  let searchFrom = 0;
+
+  for (let index = 0; index <= tokenOffset; index += 1) {
+    const tokenText = tokens[index].text;
+    const start = paragraphText.indexOf(tokenText, searchFrom);
+    if (start === -1) return null;
+
+    const end = start + tokenText.length;
+    if (index === tokenOffset) return { start, end };
+    searchFrom = end;
+  }
+
+  return null;
+};
+
 export const normalizeText = (rawText) => {
   return (
     rawText

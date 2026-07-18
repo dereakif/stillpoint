@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import RSVPReader from './components/RSVPReader';
 import DocumentEditor from './components/DocumentEditor';
 import DocumentView from './components/DocumentView';
@@ -7,20 +7,29 @@ function App() {
   const [text, setText] = useState('');
   const [mode, setMode] = useState('edit');
   const [readingPosition, setReadingPosition] = useState(null);
+  const [returnContext, setReturnContext] = useState(null);
+  const returnSequenceRef = useRef(0);
 
   const saveDocument = (newText) => {
     setText(newText);
     setReadingPosition({ blockId: 'paragraph-1', tokenOffset: 0 });
+    setReturnContext(null);
     setMode('document');
   };
 
   const startReading = (position = readingPosition) => {
     if (!text.trim()) return;
     if (position) setReadingPosition(position);
+    setReturnContext(null);
     setMode('immersive');
   };
 
-  const exitReading = () => {
+  const exitReading = (position) => {
+    if (position) {
+      setReadingPosition(position);
+      returnSequenceRef.current += 1;
+      setReturnContext({ id: returnSequenceRef.current, position });
+    }
     setMode('document');
   };
 
@@ -38,6 +47,7 @@ function App() {
         <DocumentView
           text={text}
           readingPosition={readingPosition}
+          returnContext={returnContext}
           onEdit={() => setMode('edit')}
           onStartReading={startReading}
         />

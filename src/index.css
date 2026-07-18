@@ -1,6 +1,39 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 @plugin "daisyui" {
-    themes: dracula --default;
-    logs: true;
+  themes: dracula --default;
+  logs: true;
+}
+
+.return-word-highlight {
+  border-radius: 0.2em;
+  background-color: color-mix(in oklab, var(--color-primary) 35%, transparent);
+  color: inherit;
+  animation: return-word-highlight-fade 2.4s ease-out forwards;
+}
+
+@keyframes return-word-highlight-fade {
+  0%,
+  35% {
+    background-color: color-mix(
+      in oklab,
+      var(--color-primary) 35%,
+      transparent
+    );
+  }
+
+  100% {
+    background-color: transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .return-word-highlight {
+    animation: none;
+    background-color: color-mix(
+      in oklab,
+      var(--color-primary) 20%,
+      transparent
+    );
+  }
 }

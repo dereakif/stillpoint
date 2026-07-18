@@ -4,6 +4,7 @@ import {
   computeWordDuration,
   createDocumentParagraphs,
   createRSVPPlayer,
+  getParagraphTokenRange,
   normalizeText,
   positionToTokenIndex,
   splitAtORP,
@@ -37,6 +38,27 @@ describe('createDocumentParagraphs', () => {
 
   test('returns no paragraphs for blank text', () => {
     expect(createDocumentParagraphs('  \n\n  ')).toEqual([]);
+  });
+});
+
+describe('getParagraphTokenRange', () => {
+  test('locates a token without changing original whitespace', () => {
+    expect(getParagraphTokenRange('alpha  beta\nstill', 1)).toEqual({
+      start: 7,
+      end: 11,
+    });
+  });
+
+  test('locates slash-separated RSVP tokens in source text', () => {
+    expect(getParagraphTokenRange('before/after now', 1)).toEqual({
+      start: 7,
+      end: 12,
+    });
+  });
+
+  test('returns null for an invalid token offset', () => {
+    expect(getParagraphTokenRange('alpha beta', 20)).toBeNull();
+    expect(getParagraphTokenRange('alpha beta', -1)).toBeNull();
   });
 });
 

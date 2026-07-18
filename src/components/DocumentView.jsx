@@ -1,8 +1,37 @@
+import { useEffect, useState } from 'react';
 import { Edit3, Play } from 'lucide-react';
-import { createDocumentParagraphs } from '../utils';
+import { createDocumentParagraphs, getParagraphTokenRange } from '../utils';
 
-const DocumentView = ({ text, readingPosition, onEdit, onStartReading }) => {
+const RETURN_HIGHLIGHT_DURATION = 2400;
+
+const DocumentView = ({
+  text,
+  readingPosition,
+  returnContext,
+  onEdit,
+  onStartReading,
+}) => {
   const paragraphs = createDocumentParagraphs(text);
+  const [showReturnHighlight, setShowReturnHighlight] = useState(
+    Boolean(returnContext)
+  );
+
+  useEffect(() => {
+    if (!returnContext) return undefined;
+
+    const currentParagraph = document.getElementById(
+      returnContext.position.blockId
+    );
+    currentParagraph?.scrollIntoView({ block: 'center', behavior: 'instant' });
+    currentParagraph?.focus({ preventScroll: true });
+    setShowReturnHighlight(true);
+
+    const highlightTimer = window.setTimeout(() => {
+      setShowReturnHighlight(false);
+    }, RETURN_HIGHLIGHT_DURATION);
+
+    return () => window.clearTimeout(highlightTimer);
+  }, [returnContext]);
 
   if (!paragraphs.length) {
     return (
@@ -49,20 +78,45 @@ const DocumentView = ({ text, readingPosition, onEdit, onStartReading }) => {
       >
         {paragraphs.map((paragraph, index) => {
           const isCurrent = paragraph.id === readingPosition?.blockId;
+          const isReturnTarget =
+            showReturnHighlight &&
+            paragraph.id === returnContext?.position.blockId;
+          const tokenRange = isReturnTarget
+            ? getParagraphTokenRange(
+                paragraph.text,
+                returnContext.position.tokenOffset
+              )
+            : null;
 
           return (
             <div key={paragraph.id} className="group relative">
               <p
                 id={paragraph.id}
+                tabIndex={isCurrent ? -1 : undefined}
                 aria-current={isCurrent ? 'location' : undefined}
                 data-token-offset={
                   isCurrent ? readingPosition.tokenOffset : undefined
                 }
-                className={`scroll-mt-8 whitespace-pre-line rounded-lg p-4 pr-16 transition-colors motion-reduce:transition-none ${
-                  isCurrent ? 'bg-primary/5 ring-1 ring-primary/20' : ''
+                className={`scroll-mt-8 whitespace-pre-line rounded-lg border-l-2 p-4 pr-16 transition-colors motion-reduce:transition-none ${
+                  isCurrent
+                    ? 'border-primary bg-primary/5 ring-1 ring-primary/20'
+                    : 'border-transparent'
                 }`}
               >
-                {paragraph.text}
+                {tokenRange ? (
+                  <>
+                    {paragraph.text.slice(0, tokenRange.start)}
+                    <mark
+                      data-testid="return-word-highlight"
+                      className="return-word-highlight"
+                    >
+                      {paragraph.text.slice(tokenRange.start, tokenRange.end)}
+                    </mark>
+                    {paragraph.text.slice(tokenRange.end)}
+                  </>
+                ) : (
+                  paragraph.text
+                )}
               </p>
 
               <button

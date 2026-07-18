@@ -110,13 +110,13 @@ Suggested initial shape:
 
 ## Exiting immersive mode
 
-- [ ] Pause playback immediately on exit.
-- [ ] Return to navigation mode at the exact current paragraph.
-- [ ] Scroll the current paragraph into view.
-- [ ] Apply a persistent, subtle current-paragraph marker.
-- [ ] Apply a temporary exact-word highlight after returning.
-- [ ] Fade the exact-word highlight without losing the paragraph marker.
-- [ ] Restore focus to a meaningful element in navigation mode.
+- [x] Pause playback immediately on exit.
+- [x] Return to navigation mode at the exact current paragraph.
+- [x] Scroll the current paragraph into view.
+- [x] Apply a persistent, subtle current-paragraph marker.
+- [x] Apply a temporary exact-word highlight after returning.
+- [x] Fade the exact-word highlight without losing the paragraph marker.
+- [x] Restore focus to a meaningful element in navigation mode.
 
 ## Mode transition
 

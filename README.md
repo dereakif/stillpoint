@@ -43,7 +43,7 @@ Open the local URL printed by Vite.
 3. Select **Resume reading**, or use a paragraph's **Immerse from here** action to begin at that paragraph.
 4. Wait for the countdown to finish.
 5. Use the on-screen controls or keyboard shortcuts to control playback.
-6. Select **Exit** or press `Escape` to return to the document view.
+6. Select **Exit** or press `Escape` to return to the exact reading position in the document view.
 7. Select **Edit document** whenever you want to change the source text.
 
 ### Keyboard shortcuts
@@ -115,7 +115,7 @@ bun run preview     # Preview the production build locally
 ## Current limitations
 
 - Text and reading position are not persisted between page loads.
-- Exiting immersive mode resets playback position and reading speed.
+- Reading speed is not persisted when immersive mode is closed or the page reloads.
 - Clipboard loading may be unavailable if browser permission is denied.
 
 ## Production build

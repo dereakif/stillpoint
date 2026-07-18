@@ -110,9 +110,42 @@ test('shares reading position between document and immersive modes', async ({
   const currentParagraph = page.locator('p[aria-current="location"]');
   await expect(currentParagraph).toHaveAttribute('id', 'paragraph-2');
   await expect(currentParagraph).toHaveAttribute('data-token-offset', '3');
+  await expect(currentParagraph).toBeFocused();
+  await expect(page.getByTestId('return-word-highlight')).toHaveText('six');
+
+  await page.clock.fastForward(2500);
+  await expect(page.getByTestId('return-word-highlight')).toHaveCount(0);
+  await expect(currentParagraph).toHaveAttribute('aria-current', 'location');
 
   await page.getByRole('button', { name: 'Resume reading' }).click();
   await expect(page.getByTestId('current-word')).toHaveText('six');
+});
+
+test('scrolls the exact return paragraph into view', async ({ page }) => {
+  await page.setViewportSize({ width: 900, height: 600 });
+  await page.goto('/');
+
+  const paragraphs = Array.from(
+    { length: 18 },
+    (_, index) => `Paragraph ${index + 1} has a few readable words.`
+  ).join('\n\n');
+  await openDocument(page, paragraphs);
+  await page.getByRole('button', { name: 'Immerse from paragraph 14' }).click();
+  await page.getByRole('button', { name: 'Exit' }).click();
+
+  const currentParagraph = page.locator('#paragraph-14');
+  await expect(currentParagraph).toBeFocused();
+  await expect(page.getByTestId('return-word-highlight')).toHaveText(
+    'Paragraph'
+  );
+
+  const distanceFromViewportCenter = await currentParagraph.evaluate(
+    (paragraph) => {
+      const bounds = paragraph.getBoundingClientRect();
+      return Math.abs(bounds.top + bounds.height / 2 - window.innerHeight / 2);
+    }
+  );
+  expect(distanceFromViewportCenter).toBeLessThan(80);
 });
 
 test('supports immersive keyboard controls', async ({ page }) => {

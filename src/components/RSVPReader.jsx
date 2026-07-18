@@ -75,6 +75,15 @@ const RSVPReader = ({
     }, 1000);
   };
 
+  const exitImmersiveMode = () => {
+    const engine = engineRef.current;
+    if (!engine) return;
+
+    engine.pause();
+    clearCountdownTimers();
+    onExit(engine.getState().position);
+  };
+
   const loadClipboard = async () => {
     try {
       const newText = await navigator.clipboard.readText();
@@ -118,8 +127,7 @@ const RSVPReader = ({
 
       if (event.key === 'Escape') {
         event.preventDefault();
-        engine.pause();
-        onExit();
+        exitImmersiveMode();
         return;
       }
 
@@ -180,7 +188,7 @@ const RSVPReader = ({
       <button
         type="button"
         className="absolute btn btn-soft right-6 top-6 z-30"
-        onClick={onExit}
+        onClick={exitImmersiveMode}
       >
         Exit
       </button>
