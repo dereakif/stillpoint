@@ -259,12 +259,12 @@ Navigation mode should support scrolling, skimming, searching, and choosing wher
 
 ## Bottom interaction hint
 
-- [ ] Add a subtle instruction such as **Click any word, heading, or paragraph to Immerse**.
-- [ ] Keep the hint near the bottom of the workspace without obscuring document content or mobile controls.
-- [ ] Reduce its opacity after a short delay without making the text unreadable.
-- [ ] Hide it for the remainder of the session after the reader successfully starts immersive mode.
-- [ ] Persist permanent dismissal later with the Phase 3 preference store.
-- [ ] Keep the hint accessible to keyboard and screen-reader users and static under reduced motion.
+- [x] Add a subtle instruction such as **Click any word, heading, or paragraph to Immerse**.
+- [x] Keep the hint near the bottom of the workspace without obscuring document content or mobile controls.
+- [x] Reduce its opacity after a short delay without making the text unreadable.
+- [x] Hide it for the remainder of the session after the reader successfully starts immersive mode.
+- [x] Defer permanent dismissal to the Phase 3 preference store.
+- [x] Keep the hint accessible to keyboard and screen-reader users and static under reduced motion.
 
 ## Chapter-aware playback
 

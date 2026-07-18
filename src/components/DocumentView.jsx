@@ -10,6 +10,7 @@ const DocumentView = ({
   readingPosition,
   returnContext,
   isImmersive = false,
+  showEntryHint = false,
   onEdit,
   onStartReading,
 }) => {
@@ -37,6 +38,7 @@ const DocumentView = ({
   );
   const [isContentsCollapsed, setIsContentsCollapsed] = useState(false);
   const [isContentsDrawerOpen, setIsContentsDrawerOpen] = useState(false);
+  const [isEntryHintDimmed, setIsEntryHintDimmed] = useState(false);
   const [keyboardTokenId, setKeyboardTokenId] = useState(() => {
     const token = documentModel.tokens.find(
       (candidate) =>
@@ -47,6 +49,24 @@ const DocumentView = ({
   });
   const contentsButtonRef = useRef(null);
   const drawerCloseButtonRef = useRef(null);
+
+  useEffect(() => {
+    if (!showEntryHint) {
+      setIsEntryHintDimmed(false);
+      return undefined;
+    }
+
+    const reduceMotion = window.matchMedia(
+      '(prefers-reduced-motion: reduce)'
+    ).matches;
+    if (reduceMotion) return undefined;
+
+    const dimTimer = window.setTimeout(() => {
+      setIsEntryHintDimmed(true);
+    }, 3500);
+
+    return () => window.clearTimeout(dimTimer);
+  }, [showEntryHint]);
 
   useEffect(() => {
     if (!returnContext) return undefined;
@@ -411,7 +431,7 @@ const DocumentView = ({
         <main className="min-w-0">
           <article
             aria-label="Document content"
-            className="mx-auto max-w-3xl space-y-6 px-4 pb-36 pt-10 text-lg leading-8 text-base-content/90 sm:px-8 sm:pt-14 sm:text-xl sm:leading-9"
+            className="mx-auto max-w-3xl space-y-6 px-4 pb-44 pt-10 text-lg leading-8 text-base-content/90 sm:px-8 sm:pt-14 sm:text-xl sm:leading-9"
             onClick={handleDocumentClick}
             onFocusCapture={handleDocumentFocus}
             onKeyDown={handleDocumentKeyDown}
@@ -519,6 +539,21 @@ const DocumentView = ({
         data-testid="document-status-bar"
         className={`fixed inset-x-0 bottom-0 z-30 border-t border-base-300/80 bg-base-100/92 backdrop-blur-md transition-[opacity,filter,transform] duration-800 ease-out motion-reduce:transform-none motion-reduce:transition-opacity motion-reduce:duration-200 motion-reduce:backdrop-blur-none motion-reduce:blur-none ${shellTransition}`}
       >
+        {showEntryHint && (
+          <div
+            data-testid="immersive-entry-hint"
+            className={`border-b border-base-300/60 px-4 py-1.5 text-center text-xs text-base-content transition-opacity duration-700 motion-reduce:transition-none ${
+              isEntryHintDimmed ? 'opacity-45' : 'opacity-80'
+            }`}
+          >
+            <p>Click any word, heading, or paragraph to Immerse</p>
+            <span className="sr-only">
+              Keyboard users can focus the current word, use the left and right
+              arrow keys to choose another word, then press Enter or Space.
+            </span>
+          </div>
+        )}
+
         <progress
           aria-label="Document progress"
           className="progress progress-primary absolute inset-x-0 top-0 h-0.5 w-full rounded-none"

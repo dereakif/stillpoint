@@ -45,7 +45,7 @@ Open the local URL printed by Vite.
 2. Review the detected sections. Edit a section title or add a section boundary where needed.
 3. Select **Read document** to open the rendered reading workspace.
 4. Use **Contents** to navigate sections, or collapse the desktop contents sidebar for more space.
-5. Select an exact word, activate a paragraph or heading, choose **Resume**, or immerse a chapter from the contents list.
+5. Follow the subtle bottom hint to select an exact word, activate a paragraph or heading, choose **Resume**, or immerse a chapter from the contents list. The hint fades quietly and hides for the session after the first immersive entry.
 6. Wait for the countdown to finish.
 7. Use the on-screen controls or keyboard shortcuts to control playback.
 8. Select **Exit** or press `Escape` to return with the exact token centered and briefly highlighted in the document view.

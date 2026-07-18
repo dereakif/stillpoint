@@ -316,6 +316,56 @@ test('uses an accessible contents drawer on tablet and mobile widths', async ({
   await expect(page.locator('#paragraph-3')).toBeFocused();
 });
 
+test('teaches immersive entry and dims the hint after a short delay', async ({
+  page,
+}) => {
+  await page.clock.install();
+  await page.goto('/');
+  await openDocument(page, 'alpha beta gamma');
+
+  const hint = page.getByTestId('immersive-entry-hint');
+  await expect(hint).toContainText(
+    'Click any word, heading, or paragraph to Immerse'
+  );
+  await expect(hint).toHaveCSS('opacity', '0.8');
+
+  await page.clock.fastForward(3500);
+  await expect(hint).toHaveCSS('opacity', '0.45');
+});
+
+test('keeps the entry hint static when reduced motion is preferred', async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.clock.install();
+  await page.goto('/');
+  await openDocument(page, 'alpha beta gamma');
+
+  const hint = page.getByTestId('immersive-entry-hint');
+  await expect(hint).toHaveCSS('transition-property', 'none');
+  await page.clock.fastForward(5000);
+  await expect(hint).toHaveCSS('opacity', '0.8');
+});
+
+test('hides the entry hint for the session after immersive mode starts', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await openDocument(page, 'alpha beta gamma');
+  await expect(page.getByTestId('immersive-entry-hint')).toBeVisible();
+
+  await page
+    .locator('[data-block-id="paragraph-1"][data-token-offset="1"]')
+    .click();
+  await expect(page.getByTestId('immersive-entry-hint')).toHaveCount(0);
+
+  await page.getByRole('button', { name: 'Exit' }).click();
+  await expect(
+    page.getByRole('article', { name: 'Document content' })
+  ).toBeVisible();
+  await expect(page.getByTestId('immersive-entry-hint')).toHaveCount(0);
+});
+
 test('shows synchronized navigation progress and resume context', async ({
   page,
 }) => {
@@ -370,11 +420,24 @@ test('keeps navigation controls usable at a 400% zoom reflow width', async ({
   await resumeButton.focus();
   await expect(resumeButton).toBeFocused();
 
-  const layout = await page.evaluate(() => ({
-    clientWidth: document.documentElement.clientWidth,
-    scrollWidth: document.documentElement.scrollWidth,
-  }));
+  const layout = await page.evaluate(() => {
+    const status = document
+      .querySelector('[data-testid="document-status-bar"]')
+      .getBoundingClientRect();
+
+    return {
+      clientWidth: document.documentElement.clientWidth,
+      scrollWidth: document.documentElement.scrollWidth,
+      statusLeft: status.left,
+      statusRight: status.right,
+      statusBottom: status.bottom,
+      viewportHeight: window.innerHeight,
+    };
+  });
   expect(layout.scrollWidth).toBeLessThanOrEqual(layout.clientWidth);
+  expect(layout.statusLeft).toBeGreaterThanOrEqual(0);
+  expect(layout.statusRight).toBeLessThanOrEqual(layout.clientWidth);
+  expect(layout.statusBottom).toBeLessThanOrEqual(layout.viewportHeight);
 });
 
 test('starts immersive mode from a chosen paragraph by pointer or keyboard', async ({

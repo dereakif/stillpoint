@@ -14,6 +14,7 @@ function App() {
   const [readingPosition, setReadingPosition] = useState(null);
   const [returnContext, setReturnContext] = useState(null);
   const [readingSessionId, setReadingSessionId] = useState(0);
+  const [hasStartedImmersive, setHasStartedImmersive] = useState(false);
   const returnSequenceRef = useRef(0);
   const exitTimerRef = useRef(null);
   const isExitingRef = useRef(false);
@@ -48,6 +49,7 @@ function App() {
     isExitingRef.current = false;
     if (position) setReadingPosition(position);
     setReturnContext(null);
+    setHasStartedImmersive(true);
     setReadingSessionId((sessionId) => sessionId + 1);
     setMode('immersive');
   };
@@ -88,6 +90,7 @@ function App() {
           readingPosition={readingPosition}
           returnContext={returnContext}
           isImmersive={mode === 'immersive'}
+          showEntryHint={!hasStartedImmersive}
           onEdit={() => setMode('edit')}
           onStartReading={startReading}
         />
