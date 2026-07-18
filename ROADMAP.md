@@ -53,7 +53,7 @@ Prepare the current application for shared position state and larger product fea
 - [x] Add a test for exiting during the countdown.
 - [x] Add a test confirming playback does not restart after exit.
 - [x] Add a test for keyboard controls.
-- [ ] Add desktop and mobile long-word layout tests.
+- [x] Add desktop and mobile long-word layout tests.
 - [ ] Add a reduced-motion transition test.
 
 ## Completion criteria

@@ -75,7 +75,7 @@ const WordDisplay = ({ engineRef }) => {
     <div className="flex flex-1 items-center justify-center px-4 py-12">
       <div className="w-full max-w-5xl">
         <div className="rounded-xl bg-card text-card-foreground shadow-2xl">
-          <div className="relative overflow-hidden">
+          <div data-testid="word-viewport" className="relative overflow-hidden">
             <div className="absolute inset-y-0 left-0 w-full bg-primary/5 rounded-xl" />
 
             <div
@@ -97,7 +97,11 @@ const WordDisplay = ({ engineRef }) => {
                   ref={beforeRef}
                   className="min-w-0 flex-1 text-right text-foreground"
                 />
-                <span ref={pivotRef} className="shrink-0 text-primary" />
+                <span
+                  ref={pivotRef}
+                  data-testid="word-pivot"
+                  className="shrink-0 text-primary"
+                />
                 <span
                   ref={afterRef}
                   className="min-w-0 flex-1 text-left text-foreground"

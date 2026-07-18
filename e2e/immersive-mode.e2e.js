@@ -42,7 +42,9 @@ test('supports immersive keyboard controls', async ({ page }) => {
   await page.goto('/');
   await page.clock.install();
   await enterImmersiveMode(page, 'alpha beta gamma delta epsilon zeta');
-  await page.clock.fastForward(3000);
+  await page.clock.fastForward(3700);
+  await expect(page.getByRole('button', { name: 'Pause' })).toBeVisible();
+  await page.keyboard.press('Space');
 
   const currentWord = page.getByTestId('current-word');
 
@@ -63,6 +65,50 @@ test('supports immersive keyboard controls', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Pause' })).toBeVisible();
   await page.keyboard.press('Space');
   await expect(page.getByRole('button', { name: 'Play' })).toBeVisible();
+});
+
+test('keeps long words inside the viewport with a centered pivot', async ({
+  page,
+}) => {
+  const longWord = 'pneumonoultramicroscopicsilicovolcanoconiosis'.repeat(4);
+
+  await page.goto('/');
+  await enterImmersiveMode(page, longWord);
+
+  const currentWord = page.getByTestId('current-word');
+  await expect(currentWord).toHaveText(longWord);
+
+  const metrics = await page.evaluate(() => {
+    const viewport = document
+      .querySelector('[data-testid="word-viewport"]')
+      .getBoundingClientRect();
+    const currentWordElement = document.querySelector(
+      '[data-testid="current-word"]'
+    );
+    const pivot = document
+      .querySelector('[data-testid="word-pivot"]')
+      .getBoundingClientRect();
+    const textRects = [...currentWordElement.children].map((element) => {
+      const range = document.createRange();
+      range.selectNodeContents(element);
+      return range.getBoundingClientRect();
+    });
+
+    return {
+      viewportLeft: viewport.left,
+      viewportRight: viewport.right,
+      viewportCenter: viewport.left + viewport.width / 2,
+      textLeft: Math.min(...textRects.map((rect) => rect.left)),
+      textRight: Math.max(...textRects.map((rect) => rect.right)),
+      pivotCenter: pivot.left + pivot.width / 2,
+    };
+  });
+
+  expect(metrics.textLeft).toBeGreaterThanOrEqual(metrics.viewportLeft);
+  expect(metrics.textRight).toBeLessThanOrEqual(metrics.viewportRight);
+  expect(Math.abs(metrics.pivotCenter - metrics.viewportCenter)).toBeLessThan(
+    1
+  );
 });
 
 test('does not restart playback after exiting before delayed play', async ({
