@@ -17,6 +17,7 @@ import {
 } from './storage/documentLibrary';
 
 const MODE_TRANSITION_DURATION = 800;
+const SESSION_WRITE_DEBOUNCE = 1500;
 const CHAPTER_COMPLETION_STORAGE_KEY = 'stillpoint.chapterCompletionBehavior';
 const CHAPTER_COMPLETION_BEHAVIORS = new Set(['ask', 'continue', 'return']);
 
@@ -45,7 +46,7 @@ const getDocumentProgress = (documentModel, readingPosition) => {
   return (tokenIndex + 1) / documentModel.tokens.length;
 };
 
-const toLibraryRecord = (documentModel, readingPosition) => ({
+const toLibraryRecord = (documentModel, readingSession) => ({
   id: documentModel.id,
   title: documentModel.title,
   source: {
@@ -53,14 +54,18 @@ const toLibraryRecord = (documentModel, readingPosition) => ({
     format: documentModel.source.format,
     revision: documentModel.source.revision,
   },
-  readingPosition,
-  progress: getDocumentProgress(documentModel, readingPosition),
+  readingPosition: readingSession.position,
+  readingSession,
+  progress: getDocumentProgress(documentModel, readingSession.position),
 });
 
 function App() {
   const [document, setDocument] = useState(createEmptyDocument);
   const [mode, setMode] = useState('loading');
   const [readingPosition, setReadingPosition] = useState(null);
+  const [completedChapterIds, setCompletedChapterIds] = useState([]);
+  const [wpm, setWpm] = useState(300);
+  const [navigationScrollY, setNavigationScrollY] = useState(0);
   const [returnContext, setReturnContext] = useState(null);
   const [readingSessionId, setReadingSessionId] = useState(0);
   const [hasStartedImmersive, setHasStartedImmersive] = useState(false);
@@ -71,6 +76,7 @@ function App() {
   const [storageError, setStorageError] = useState(null);
   const returnSequenceRef = useRef(0);
   const exitTimerRef = useRef(null);
+  const sessionWriteTimerRef = useRef(null);
   const isExitingRef = useRef(false);
 
   const text = document.source.text;
@@ -89,13 +95,18 @@ function App() {
 
   const persistDocument = async (
     documentModel = document,
-    position = readingPosition
+    session = {
+      position: readingPosition,
+      completedChapterIds,
+      wpm,
+      navigationScrollY,
+    }
   ) => {
     if (!documentModel.source.text.trim()) return null;
 
     try {
       const record = await saveStoredDocument(
-        toLibraryRecord(documentModel, position)
+        toLibraryRecord(documentModel, session)
       );
       await refreshLibrary();
       setStorageError(null);
@@ -127,8 +138,28 @@ function App() {
     return () => {
       cancelled = true;
       window.clearTimeout(exitTimerRef.current);
+      window.clearTimeout(sessionWriteTimerRef.current);
     };
   }, []);
+
+  useEffect(() => {
+    window.clearTimeout(sessionWriteTimerRef.current);
+    if (!document.source.text.trim() || !readingPosition) return undefined;
+
+    sessionWriteTimerRef.current = window.setTimeout(() => {
+      sessionWriteTimerRef.current = null;
+      persistDocument(document, {
+        position: readingPosition,
+        completedChapterIds,
+        wpm,
+        navigationScrollY,
+      });
+    }, SESSION_WRITE_DEBOUNCE);
+
+    return () => window.clearTimeout(sessionWriteTimerRef.current);
+    // Persist a quiet snapshot rather than writing on every displayed word.
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
+  }, [document, readingPosition, completedChapterIds, wpm, navigationScrollY]);
 
   const updateChapterCompletionBehavior = (behavior) => {
     if (!CHAPTER_COMPLETION_BEHAVIORS.has(behavior)) return;
@@ -159,10 +190,17 @@ function App() {
     const initialPosition = tokenIndexToPosition(newDocument.tokens, 0);
     setDocument(newDocument);
     setReadingPosition(initialPosition);
+    setCompletedChapterIds([]);
+    setNavigationScrollY(0);
     setReturnContext(null);
     isExitingRef.current = false;
     setMode('document');
-    persistDocument(newDocument, initialPosition);
+    persistDocument(newDocument, {
+      position: initialPosition,
+      completedChapterIds: [],
+      wpm,
+      navigationScrollY: 0,
+    });
   };
 
   const startReading = (position = readingPosition) => {
@@ -184,7 +222,12 @@ function App() {
       setReadingPosition(position);
       returnSequenceRef.current += 1;
       setReturnContext({ id: returnSequenceRef.current, position });
-      persistDocument(document, position);
+      persistDocument(document, {
+        position,
+        completedChapterIds,
+        wpm,
+        navigationScrollY,
+      });
     }
 
     setMode('returning');
@@ -202,25 +245,58 @@ function App() {
       sourceFormat: record.source.format,
       revision: record.source.revision,
     });
+    const savedSession = record.readingSession ?? {};
     const restoredTokenIndex = positionToTokenIndex(
       openedDocument.tokens,
-      record.readingPosition
+      savedSession.position ?? record.readingPosition
     );
     const restoredPosition = tokenIndexToPosition(
       openedDocument.tokens,
       restoredTokenIndex
     );
 
+    const sectionIds = new Set(
+      openedDocument.sections.map((section) => section.id)
+    );
+    const restoredCompletedChapterIds = (
+      savedSession.completedChapterIds ?? []
+    ).filter((id) => sectionIds.has(id));
+    const restoredWpm = Number.isFinite(savedSession.wpm)
+      ? savedSession.wpm
+      : 300;
+    const restoredScrollY = Number.isFinite(savedSession.navigationScrollY)
+      ? Math.max(0, savedSession.navigationScrollY)
+      : 0;
+
+    if (restoredScrollY > 0) {
+      window.history.replaceState(
+        null,
+        '',
+        `${window.location.pathname}${window.location.search}`
+      );
+    }
+
     setDocument(openedDocument);
     setReadingPosition(restoredPosition);
+    setCompletedChapterIds(restoredCompletedChapterIds);
+    setWpm(restoredWpm);
+    setNavigationScrollY(restoredScrollY);
     setReturnContext(null);
     setMode('document');
-    await persistDocument(openedDocument, restoredPosition);
+    await persistDocument(openedDocument, {
+      position: restoredPosition,
+      completedChapterIds: restoredCompletedChapterIds,
+      wpm: restoredWpm,
+      navigationScrollY: restoredScrollY,
+    });
   };
 
   const createNewDocument = () => {
     setDocument(createEmptyDocument());
     setReadingPosition(null);
+    setCompletedChapterIds([]);
+    setWpm(300);
+    setNavigationScrollY(0);
     setReturnContext(null);
     setMode('edit');
   };
@@ -228,7 +304,12 @@ function App() {
   const openLibrary = async () => {
     window.clearTimeout(exitTimerRef.current);
     isExitingRef.current = false;
-    await persistDocument();
+    await persistDocument(document, {
+      position: readingPosition,
+      completedChapterIds,
+      wpm,
+      navigationScrollY,
+    });
     setMode('library');
   };
 
@@ -316,6 +397,8 @@ function App() {
           showEntryHint={!hasStartedImmersive}
           chapterCompletionBehavior={chapterCompletionBehavior}
           onChapterCompletionBehaviorChange={updateChapterCompletionBehavior}
+          navigationScrollY={navigationScrollY}
+          onNavigationScrollChange={setNavigationScrollY}
           onLibrary={openLibrary}
           onEdit={() => setMode('edit')}
           onStartReading={startReading}
@@ -326,9 +409,21 @@ function App() {
         <RSVPReader
           key={readingSessionId}
           document={document}
-          onDocumentChange={setDocument}
+          onDocumentChange={(newDocument) => {
+            setDocument(newDocument);
+            setCompletedChapterIds([]);
+            setNavigationScrollY(0);
+          }}
           readingPosition={readingPosition}
           onReadingPositionChange={setReadingPosition}
+          initialWpm={wpm}
+          onWpmChange={setWpm}
+          completedChapterIds={completedChapterIds}
+          onChapterComplete={(chapterId) =>
+            setCompletedChapterIds((current) =>
+              current.includes(chapterId) ? current : [...current, chapterId]
+            )
+          }
           chapterCompletionBehavior={chapterCompletionBehavior}
           onChapterCompletionBehaviorChange={updateChapterCompletionBehavior}
           isExiting={mode === 'returning'}

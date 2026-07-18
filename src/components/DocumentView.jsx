@@ -21,6 +21,8 @@ const DocumentView = ({
   showEntryHint = false,
   chapterCompletionBehavior = 'ask',
   onChapterCompletionBehaviorChange,
+  navigationScrollY = 0,
+  onNavigationScrollChange,
   onLibrary,
   onEdit,
   onStartReading,
@@ -60,6 +62,7 @@ const DocumentView = ({
   });
   const contentsButtonRef = useRef(null);
   const drawerCloseButtonRef = useRef(null);
+  const isRestoringScrollRef = useRef(navigationScrollY > 0);
 
   useEffect(() => {
     if (!showEntryHint) {
@@ -134,6 +137,9 @@ const DocumentView = ({
     };
 
     const handleScroll = () => {
+      if (!isRestoringScrollRef.current) {
+        onNavigationScrollChange?.(window.scrollY);
+      }
       if (animationFrame !== null) return;
       animationFrame = window.requestAnimationFrame(updateVisibleSection);
     };
@@ -145,7 +151,7 @@ const DocumentView = ({
       window.removeEventListener('scroll', handleScroll);
       window.cancelAnimationFrame(animationFrame);
     };
-  }, [documentModel, isImmersive]);
+  }, [documentModel, isImmersive, onNavigationScrollChange]);
 
   useEffect(() => {
     const requestedSectionId = decodeURIComponent(
@@ -154,7 +160,7 @@ const DocumentView = ({
     const requestedSection = documentModel.sections.find(
       (section) => section.id === requestedSectionId
     );
-    if (!requestedSection) return undefined;
+    if (!requestedSection || navigationScrollY > 0) return undefined;
 
     setActiveSectionId(requestedSection.id);
     const navigationFrame = window.requestAnimationFrame(() => {
@@ -164,7 +170,29 @@ const DocumentView = ({
     });
 
     return () => window.cancelAnimationFrame(navigationFrame);
-  }, [documentModel]);
+  }, [documentModel, navigationScrollY]);
+
+  useEffect(() => {
+    if (navigationScrollY <= 0) {
+      isRestoringScrollRef.current = false;
+      return undefined;
+    }
+
+    let settleFrame = null;
+    const restoreTimer = window.setTimeout(() => {
+      window.scrollTo(0, navigationScrollY);
+      settleFrame = window.requestAnimationFrame(() => {
+        isRestoringScrollRef.current = false;
+      });
+    }, 50);
+
+    return () => {
+      window.clearTimeout(restoreTimer);
+      window.cancelAnimationFrame(settleFrame);
+    };
+    // Scroll is restored once when this document view is opened.
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
+  }, [documentModel.id]);
 
   useEffect(() => {
     if (!activeSectionId) return;

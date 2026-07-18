@@ -504,6 +504,27 @@ describe('createRSVPPlayer', () => {
     player.pause();
   });
 
+  test('does not prompt for a chapter restored as completed', async () => {
+    const document = createDocumentModel('# One\n\nalpha\n\n# Two\n\nbeta');
+    const player = createRSVPPlayer(document, {
+      baseWpm: 800,
+      completedChapterIds: ['section-1'],
+    });
+    let promptCount = 0;
+    const completed = new Promise((resolve) => {
+      player.subscribe('complete', resolve);
+    });
+
+    player.subscribe('chapterComplete', () => {
+      promptCount += 1;
+    });
+    player.play();
+    await completed;
+
+    expect(promptCount).toBe(0);
+    expect(player.getState().completedChapterIds).toEqual(['section-1']);
+  });
+
   test('does not prompt twice after rewinding across a completed boundary', async () => {
     const document = createDocumentModel('# One\n\nalpha\n\n# Two\n\nbeta');
     const player = createRSVPPlayer(document, { baseWpm: 800 });
@@ -754,6 +775,7 @@ describe('createRSVPPlayer', () => {
       tokenCount: 2,
       progress: 0.5,
       position: { blockId: 'paragraph-1', tokenOffset: 0 },
+      completedChapterIds: [],
     });
 
     player.skipForward(1);
@@ -764,6 +786,7 @@ describe('createRSVPPlayer', () => {
       tokenCount: 2,
       progress: 1,
       position: { blockId: 'paragraph-1', tokenOffset: 1 },
+      completedChapterIds: [],
     });
 
     player.loadText('');
@@ -774,6 +797,7 @@ describe('createRSVPPlayer', () => {
       tokenCount: 0,
       progress: 0,
       position: null,
+      completedChapterIds: [],
     });
   });
 

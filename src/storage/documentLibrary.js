@@ -1,6 +1,14 @@
 const DATABASE_NAME = 'stillpoint-library';
 const DATABASE_VERSION = 1;
 const DOCUMENT_STORE = 'documents';
+export const DOCUMENT_SCHEMA_VERSION = 2;
+
+const DEFAULT_READING_SESSION = Object.freeze({
+  position: null,
+  completedChapterIds: [],
+  wpm: 300,
+  navigationScrollY: 0,
+});
 
 export class DocumentStorageError extends Error {
   constructor(message, code = 'unknown', cause) {
@@ -127,30 +135,61 @@ const withStore = async (mode, operation) => {
   }
 };
 
+export const normalizeDocumentRecord = (record) => {
+  if (!record) return record;
+
+  const savedSession = record.readingSession ?? {};
+  const completedChapterIds = Array.isArray(savedSession.completedChapterIds)
+    ? [...new Set(savedSession.completedChapterIds.filter(Boolean))]
+    : [];
+  const wpm = Number(savedSession.wpm);
+  const navigationScrollY = Number(savedSession.navigationScrollY);
+  const readingSession = {
+    ...DEFAULT_READING_SESSION,
+    ...savedSession,
+    position: savedSession.position ?? record.readingPosition ?? null,
+    completedChapterIds,
+    wpm: Number.isFinite(wpm) ? Math.max(100, Math.min(800, wpm)) : 300,
+    navigationScrollY:
+      Number.isFinite(navigationScrollY) && navigationScrollY > 0
+        ? navigationScrollY
+        : 0,
+  };
+
+  return {
+    ...record,
+    schemaVersion: DOCUMENT_SCHEMA_VERSION,
+    readingPosition: readingSession.position,
+    readingSession,
+  };
+};
+
 export const listDocuments = async () => {
   const documents = await withStore('readonly', (store) =>
     requestResult(store.getAll())
   );
 
-  return documents.sort(
-    (left, right) => right.lastOpenedAt - left.lastOpenedAt
-  );
+  return documents
+    .map(normalizeDocumentRecord)
+    .sort((left, right) => right.lastOpenedAt - left.lastOpenedAt);
 };
 
-export const getDocument = (id) =>
-  withStore('readonly', (store) => requestResult(store.get(id)));
+export const getDocument = async (id) =>
+  normalizeDocumentRecord(
+    await withStore('readonly', (store) => requestResult(store.get(id)))
+  );
 
 export const saveDocument = async (documentRecord) => {
   const existing = await getDocument(documentRecord.id);
   const now = Date.now();
-  const record = {
+  const record = normalizeDocumentRecord({
     ...existing,
     ...documentRecord,
-    schemaVersion: 1,
+    schemaVersion: DOCUMENT_SCHEMA_VERSION,
     createdAt: existing?.createdAt ?? now,
     updatedAt: now,
     lastOpenedAt: documentRecord.lastOpenedAt ?? now,
-  };
+  });
 
   await withStore('readwrite', (store) => requestResult(store.put(record)));
   return record;

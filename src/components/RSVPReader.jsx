@@ -10,6 +10,10 @@ const RSVPReader = ({
   onDocumentChange,
   readingPosition,
   onReadingPositionChange,
+  initialWpm = 300,
+  onWpmChange,
+  completedChapterIds = [],
+  onChapterComplete,
   chapterCompletionBehavior = 'ask',
   onChapterCompletionBehaviorChange,
   isExiting = false,
@@ -22,8 +26,10 @@ const RSVPReader = ({
   const entryFrameRef = useRef(null);
   const automaticContinueTimerRef = useRef(null);
   const chapterCompletionBehaviorRef = useRef(chapterCompletionBehavior);
+  const onChapterCompleteRef = useRef(onChapterComplete);
   const onExitRef = useRef(onExit);
   chapterCompletionBehaviorRef.current = chapterCompletionBehavior;
+  onChapterCompleteRef.current = onChapterComplete;
   onExitRef.current = onExit;
 
   const [countdown, setCountdown] = useState(3);
@@ -34,8 +40,9 @@ const RSVPReader = ({
 
   if (engineRef.current === null) {
     engineRef.current = createRSVPPlayer(document, {
-      baseWpm: 300,
+      baseWpm: initialWpm,
       initialPosition: readingPosition,
+      completedChapterIds,
     });
   }
 
@@ -153,9 +160,13 @@ const RSVPReader = ({
       'positionChange',
       onReadingPositionChange
     );
+    const unsubscribeWpm = onWpmChange
+      ? engine.subscribe('wpmChange', onWpmChange)
+      : () => {};
     const unsubscribeChapterComplete = engine.subscribe(
       'chapterComplete',
       (boundary) => {
+        onChapterCompleteRef.current?.(boundary.completedChapter.id);
         if (chapterCompletionBehaviorRef.current === 'continue') {
           beginAutomaticContinuation(boundary);
           return;
@@ -170,6 +181,7 @@ const RSVPReader = ({
 
     return () => {
       unsubscribePosition();
+      unsubscribeWpm();
       unsubscribeChapterComplete();
     };
     // oxlint-disable-next-line react-hooks/exhaustive-deps

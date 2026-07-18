@@ -627,11 +627,11 @@ export const computeWordDuration = (token, baseWpm, opts = {}) => {
  * Creates an RSVP player with a stable command, state, and event interface.
  *
  * @param {string | { tokens: RSVPToken[] }} content
- * @param {{ baseWpm?: number, initialPosition?: ReadingPosition | null }} [options]
+ * @param {{ baseWpm?: number, initialPosition?: ReadingPosition | null, completedChapterIds?: string[] }} [options]
  */
 export const createRSVPPlayer = (
   content,
-  { baseWpm = 300, initialPosition = null } = {}
+  { baseWpm = 300, initialPosition = null, completedChapterIds = [] } = {}
 ) => {
   let tokens = typeof content === 'string' ? tokenize(content) : content.tokens;
   let index = positionToTokenIndex(tokens, initialPosition);
@@ -647,6 +647,7 @@ export const createRSVPPlayer = (
           )
           .map((section) => ({ id: section.id, title: section.title }));
   let pendingChapterBoundary = null;
+  const completedChapters = new Set(completedChapterIds);
   const promptedChapterBoundaries = new Set();
   const readTokenIndices = new Set();
 
@@ -796,8 +797,10 @@ export const createRSVPPlayer = (
 
       if (
         chapterBoundary &&
+        !completedChapters.has(chapterBoundary.completedChapter.id) &&
         !promptedChapterBoundaries.has(chapterBoundary.id)
       ) {
+        completedChapters.add(chapterBoundary.completedChapter.id);
         promptedChapterBoundaries.add(chapterBoundary.id);
         pendingChapterBoundary = chapterBoundary;
         playing = false;
@@ -829,6 +832,7 @@ export const createRSVPPlayer = (
     chapterDefinitions = [];
     pendingChapterBoundary = null;
     promptedChapterBoundaries.clear();
+    completedChapters.clear();
     readTokenIndices.clear();
     index = 0;
   };
@@ -844,6 +848,7 @@ export const createRSVPPlayer = (
       .map((section) => ({ id: section.id, title: section.title }));
     pendingChapterBoundary = null;
     promptedChapterBoundaries.clear();
+    completedChapters.clear();
     readTokenIndices.clear();
     index = 0;
   };
@@ -929,6 +934,7 @@ export const createRSVPPlayer = (
       ? (Math.min(index, tokens.length - 1) + 1) / tokens.length
       : 0,
     position: tokenIndexToPosition(tokens, index),
+    completedChapterIds: [...completedChapters],
   });
 
   player.setWpm = (newWpm) => {

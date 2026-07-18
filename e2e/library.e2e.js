@@ -38,6 +38,8 @@ test('opens a saved document at its exact last reading position', async ({
     .click();
   await page.getByRole('button', { name: 'Exit' }).click();
   await openLibrary(page);
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'Library' })).toBeVisible();
 
   await expect(
     page.getByRole('progressbar', { name: 'Position Test progress' })
@@ -49,6 +51,100 @@ test('opens a saved document at its exact last reading position', async ({
   await expect(currentParagraph.locator('[data-token-offset="2"]')).toHaveText(
     'three'
   );
+});
+
+test('restores the saved WPM for a document', async ({ page }) => {
+  await page.goto('/');
+  await page.clock.install();
+  await saveDocument(page, '# WPM Test\n\none two three');
+  await page.getByRole('button', { name: 'Immerse from paragraph 2' }).click();
+  await page.clock.fastForward(3800);
+
+  const speed = page.getByRole('slider', { name: 'Reading speed' });
+  await speed.fill('470');
+  await expect(speed).toHaveValue('470');
+  await page.getByRole('button', { name: 'Exit' }).click();
+  await page.clock.fastForward(1000);
+  await openLibrary(page);
+
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'Library' })).toBeVisible();
+  await page.getByRole('button', { name: /^WPM Test/ }).click();
+  await page.getByRole('button', { name: 'Immerse from paragraph 2' }).click();
+  await page.clock.fastForward(3800);
+  await expect(page.getByRole('slider', { name: 'Reading speed' })).toHaveValue(
+    '470'
+  );
+});
+
+test('does not repeat a restored completed-chapter prompt', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await page.clock.install();
+  await saveDocument(page, '# One\n\nalpha\n\n# Two\n\nbeta');
+  await page.getByRole('button', { name: 'Immerse from paragraph 2' }).click();
+  await page.clock.fastForward(4500);
+
+  const chapterDialog = page.getByRole('dialog', { name: 'Chapter complete' });
+  await expect(chapterDialog).toBeVisible();
+  await chapterDialog
+    .getByRole('button', { name: 'Return to document' })
+    .click();
+  await page.clock.fastForward(1000);
+  await openLibrary(page);
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'Library' })).toBeVisible();
+  await page.getByRole('button', { name: /^One/ }).click();
+
+  await page.getByRole('button', { name: 'Immerse from paragraph 2' }).click();
+  await page.clock.fastForward(5000);
+  await expect(chapterDialog).toHaveCount(0);
+  await expect(page.getByTestId('current-word')).toHaveText('beta');
+});
+
+test('restores navigation scroll when reopening a document', async ({
+  page,
+}) => {
+  await page.goto('/');
+  const source = [
+    '# Scroll Test',
+    ...Array.from(
+      { length: 40 },
+      (_, index) =>
+        `Paragraph ${index + 1} has enough text to create a long reading view.`
+    ),
+  ].join('\n\n');
+  await saveDocument(page, source);
+
+  await page.evaluate(() => window.scrollTo(0, 1200));
+  await expect
+    .poll(() => page.evaluate(() => window.scrollY))
+    .toBeGreaterThan(900);
+  await openLibrary(page);
+  const savedScrollY = await page.evaluate(
+    () =>
+      new Promise((resolve, reject) => {
+        const request = indexedDB.open('stillpoint-library', 1);
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => {
+          const database = request.result;
+          const transaction = database.transaction('documents', 'readonly');
+          const recordsRequest = transaction.objectStore('documents').getAll();
+          recordsRequest.onerror = () => reject(recordsRequest.error);
+          recordsRequest.onsuccess = () => {
+            resolve(recordsRequest.result[0].readingSession.navigationScrollY);
+            database.close();
+          };
+        };
+      })
+  );
+  expect(savedScrollY).toBeGreaterThan(900);
+  await page.getByRole('button', { name: /^Scroll Test/ }).click();
+
+  await expect
+    .poll(() => page.evaluate(() => window.scrollY))
+    .toBeGreaterThan(900);
 });
 
 test('renames and deletes a document with confirmation', async ({ page }) => {

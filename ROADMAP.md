@@ -326,14 +326,14 @@ Remember documents, positions, and preferences across sessions.
 
 ## Reading-session persistence
 
-- [ ] Persist current chapter, block, and token offset.
-- [ ] Persist completed chapters.
-- [ ] Persist WPM.
-- [ ] Persist chapter completion behavior.
-- [ ] Persist navigation scroll position where useful.
-- [ ] Debounce position writes to avoid excessive storage operations.
-- [ ] Recover gracefully from an invalid or outdated saved position.
-- [ ] Version persisted data and plan migrations.
+- [x] Persist current chapter, block, and token offset.
+- [x] Persist completed chapters.
+- [x] Persist WPM.
+- [x] Persist chapter completion behavior.
+- [x] Persist navigation scroll position where useful.
+- [x] Debounce position writes to avoid excessive storage operations.
+- [x] Recover gracefully from an invalid or outdated saved position.
+- [x] Version persisted data and plan migrations.
 
 ## Personalized calibration
 
