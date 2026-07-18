@@ -1,6 +1,6 @@
 # Stillpoint
 
-Stillpoint is a browser-based RSVP (Rapid Serial Visual Presentation) reader. Paste text into the document view, enter immersive mode, and read one word or short phrase at a time without moving your eyes across a page.
+Stillpoint is a browser-based RSVP (Rapid Serial Visual Presentation) reader. Paste text into the document view, enter immersive mode, and read one word at a time without moving your eyes across a page.
 
 The reader highlights each token's Optimal Recognition Point (ORP), adjusts timing for punctuation and word length, and supports keyboard-driven playback.
 
@@ -82,7 +82,6 @@ bun run preview  # Preview the production build locally
 - Text and reading position are not persisted between page loads.
 - Exiting immersive mode resets playback position and reading speed.
 - Clipboard loading may be unavailable if browser permission is denied.
-- There is currently no automated test suite.
 
 ## Production build
 
