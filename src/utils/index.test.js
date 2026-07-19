@@ -712,6 +712,20 @@ describe('createRSVPPlayer', () => {
     expect(words).toEqual(['alpha', 'gamma', 'beta', 'alpha', 'delta']);
   });
 
+  test('uses the configured default rewind distance', () => {
+    const player = createRSVPPlayer(
+      'zero one two three four five six seven eight nine ten',
+      { rewindWords: 7 }
+    );
+    const words = [];
+
+    player.subscribe('word', (token) => words.push(token.text));
+    player.skipForward(10);
+    player.rewind();
+
+    expect(words).toEqual(['ten', 'three']);
+  });
+
   test('reports displayed-token progress consistently during navigation', () => {
     const player = createRSVPPlayer('alpha beta gamma');
     const progress = [];

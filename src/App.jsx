@@ -4,6 +4,7 @@ import DocumentEditor from './components/DocumentEditor';
 import DocumentLibrary from './components/DocumentLibrary';
 import DocumentView from './components/DocumentView';
 import ReadingCalibration from './components/ReadingCalibration';
+import ReadingSettings from './components/ReadingSettings';
 import {
   createDocumentModel,
   positionToTokenIndex,
@@ -26,6 +27,11 @@ import {
   shouldOfferRecalibration,
   skipInitialCalibration,
 } from './storage/calibration';
+import {
+  READING_SETTINGS_STORAGE_KEY,
+  loadReadingSettings,
+  saveReadingSettings,
+} from './storage/readingSettings';
 
 const MODE_TRANSITION_DURATION = 800;
 const SESSION_WRITE_DEBOUNCE = 1500;
@@ -79,9 +85,25 @@ function App() {
     loadCalibrationProfile
   );
   const [calibrationMode, setCalibrationMode] = useState(null);
-  const [wpm, setWpm] = useState(
-    () => calibrationProfile.currentRecommendation ?? 300
-  );
+  const [isReadingSettingsOpen, setIsReadingSettingsOpen] = useState(false);
+  const [readingSettings, setReadingSettings] = useState(() => {
+    const loadedSettings = loadReadingSettings();
+    try {
+      if (
+        !window.localStorage.getItem(READING_SETTINGS_STORAGE_KEY) &&
+        calibrationProfile.currentRecommendation
+      ) {
+        return saveReadingSettings({
+          ...loadedSettings,
+          wpm: calibrationProfile.currentRecommendation,
+        });
+      }
+    } catch {
+      // The in-memory settings fallback remains available.
+    }
+    return loadedSettings;
+  });
+  const [wpm, setWpm] = useState(() => readingSettings.wpm);
   const [navigationScrollY, setNavigationScrollY] = useState(0);
   const [returnContext, setReturnContext] = useState(null);
   const [readingSessionId, setReadingSessionId] = useState(0);
@@ -184,11 +206,31 @@ function App() {
     return savedProfile;
   };
 
+  const updateReadingWpm = (nextWpm) => {
+    setWpm(nextWpm);
+    setReadingSettings((current) =>
+      saveReadingSettings({ ...current, wpm: nextWpm })
+    );
+  };
+
+  const applyReadingSettings = (nextSettings) => {
+    const savedSettings = saveReadingSettings(nextSettings);
+    setReadingSettings(savedSettings);
+    setWpm(savedSettings.wpm);
+    setIsReadingSettingsOpen(false);
+    persistDocument(document, {
+      position: readingPosition,
+      completedChapterIds,
+      wpm: savedSettings.wpm,
+      navigationScrollY,
+    });
+  };
+
   const applyCalibration = (result, acceptedWpm) => {
     const profile = updateCalibrationProfile(
       completeCalibration(calibrationProfile, result, acceptedWpm)
     );
-    setWpm(profile.currentRecommendation ?? wpm);
+    updateReadingWpm(profile.currentRecommendation ?? wpm);
     setCalibrationMode(null);
   };
 
@@ -331,7 +373,7 @@ function App() {
     setDocument(openedDocument);
     setReadingPosition(restoredPosition);
     setCompletedChapterIds(restoredCompletedChapterIds);
-    setWpm(restoredWpm);
+    updateReadingWpm(restoredWpm);
     setNavigationScrollY(restoredScrollY);
     setReturnContext(null);
     setMode('document');
@@ -347,7 +389,7 @@ function App() {
     setDocument(createEmptyDocument());
     setReadingPosition(null);
     setCompletedChapterIds([]);
-    setWpm(calibrationProfile.currentRecommendation ?? 300);
+    setWpm(readingSettings.wpm);
     setNavigationScrollY(0);
     setReturnContext(null);
     setMode('edit');
@@ -457,6 +499,7 @@ function App() {
                 : null
           }
           currentWpm={wpm}
+          onReadingSettings={() => setIsReadingSettingsOpen(true)}
           onCalibrate={() =>
             setCalibrationMode(
               calibrationProfile.status === 'new' ? 'first-run' : 'explicit'
@@ -470,6 +513,18 @@ function App() {
           onLibrary={openLibrary}
           onEdit={() => setMode('edit')}
           onStartReading={startReading}
+        />
+      )}
+
+      {isReadingSettingsOpen && (
+        <ReadingSettings
+          settings={{ ...readingSettings, wpm }}
+          onApply={applyReadingSettings}
+          onClose={() => setIsReadingSettingsOpen(false)}
+          onRecalibrate={() => {
+            setIsReadingSettingsOpen(false);
+            setCalibrationMode('explicit');
+          }}
         />
       )}
 
@@ -498,7 +553,8 @@ function App() {
           readingPosition={readingPosition}
           onReadingPositionChange={setReadingPosition}
           initialWpm={wpm}
-          onWpmChange={setWpm}
+          readingSettings={readingSettings}
+          onWpmChange={updateReadingWpm}
           completedChapterIds={completedChapterIds}
           onChapterComplete={(chapterId) =>
             setCompletedChapterIds((current) =>

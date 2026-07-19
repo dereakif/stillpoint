@@ -629,11 +629,17 @@ export const computeWordDuration = (token, baseWpm, opts = {}) => {
  * Creates an RSVP player with a stable command, state, and event interface.
  *
  * @param {string | { tokens: RSVPToken[] }} content
- * @param {{ baseWpm?: number, initialPosition?: ReadingPosition | null, completedChapterIds?: string[] }} [options]
+ * @param {{ baseWpm?: number, initialPosition?: ReadingPosition | null, completedChapterIds?: string[], timingOptions?: object, rewindWords?: number }} [options]
  */
 export const createRSVPPlayer = (
   content,
-  { baseWpm = 300, initialPosition = null, completedChapterIds = [] } = {}
+  {
+    baseWpm = 300,
+    initialPosition = null,
+    completedChapterIds = [],
+    timingOptions = {},
+    rewindWords = 5,
+  } = {}
 ) => {
   let tokens = typeof content === 'string' ? tokenize(content) : content.tokens;
   let index = positionToTokenIndex(tokens, initialPosition);
@@ -797,7 +803,7 @@ export const createRSVPPlayer = (
 
     const token = tokens[index];
     emitCurrentToken();
-    const duration = computeWordDuration(token, wpm);
+    const duration = computeWordDuration(token, wpm, timingOptions);
     timerId = setTimeout(() => {
       const chapterBoundary = getChapterBoundaryAfter(index);
 
@@ -923,7 +929,7 @@ export const createRSVPPlayer = (
     player.play();
   };
 
-  player.rewind = (n = 5) => jumpTo(index - n);
+  player.rewind = (n = rewindWords) => jumpTo(index - n);
   player.skipForward = (n = 5) => jumpTo(index + n);
 
   player.isPlaying = () => playing;

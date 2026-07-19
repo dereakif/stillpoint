@@ -24,6 +24,7 @@ const DocumentView = ({
   onChapterCompletionBehaviorChange,
   calibrationOffer = null,
   currentWpm = 300,
+  onReadingSettings,
   onCalibrate,
   onSkipCalibration,
   onPostponeCalibration,
@@ -417,8 +418,8 @@ const DocumentView = ({
           <button
             type="button"
             className="btn btn-ghost btn-sm shrink-0"
-            aria-label={`Reading settings and recalibrate: ${currentWpm} WPM`}
-            onClick={onCalibrate}
+            aria-label={`Reading settings: ${currentWpm} WPM`}
+            onClick={onReadingSettings}
           >
             <Gauge className="size-4" />
             <span className="hidden xl:inline">{currentWpm} WPM</span>

@@ -354,15 +354,15 @@ Remember documents, positions, and preferences across sessions.
 ## Reading settings
 
 - [x] Use the accepted calibration result as the initial WPM while preserving manual overrides.
-- [ ] Add pacing presets: Smooth, Natural, and Deliberate.
-- [ ] Add WPM control.
-- [ ] Add countdown duration.
-- [ ] Add rewind distance.
-- [ ] Add punctuation-pause strength.
-- [ ] Add long-word timing preference.
-- [ ] Add function-word acceleration toggle.
-- [ ] Keep advanced timing controls behind an expandable section.
-- [ ] Preview timing changes before applying them globally.
+- [x] Add pacing presets: Smooth, Natural, and Deliberate.
+- [x] Add WPM control.
+- [x] Add countdown duration.
+- [x] Add rewind distance.
+- [x] Add punctuation-pause strength.
+- [x] Add long-word timing preference.
+- [x] Add function-word acceleration toggle.
+- [x] Keep advanced timing controls behind an expandable section.
+- [x] Preview timing changes before applying them globally.
 
 ## Appearance settings
 
@@ -393,8 +393,8 @@ Remember documents, positions, and preferences across sessions.
 ## Completion criteria
 
 - [ ] Documents and reading positions survive page reloads.
-- [ ] Settings are restored consistently.
-- [ ] Stored data has a versioned schema and recovery behavior.
+- [x] Settings are restored consistently.
+- [x] Stored data has a versioned schema and recovery behavior.
 - [ ] Readers can export or remove their local data.
 - [x] Readers can calibrate, override, and later revisit their recommended reading pace.
 

@@ -4,6 +4,7 @@ import WordDisplay from './WordDisplay';
 import Toolbar from './Toolbar';
 import ChapterBoundary from './ChapterBoundary';
 import ChapterAutoContinue from './ChapterAutoContinue';
+import { toEngineTimingOptions } from '../storage/readingSettings';
 
 const RSVPReader = ({
   document,
@@ -11,6 +12,7 @@ const RSVPReader = ({
   readingPosition,
   onReadingPositionChange,
   initialWpm = 300,
+  readingSettings,
   onWpmChange,
   completedChapterIds = [],
   onChapterComplete,
@@ -40,7 +42,10 @@ const RSVPReader = ({
   onReadingActivityRef.current = onReadingActivity;
   onExitRef.current = onExit;
 
-  const [countdown, setCountdown] = useState(3);
+  const [countdown, setCountdown] = useState(() => {
+    const seconds = readingSettings?.countdownSeconds ?? 3;
+    return seconds > 0 ? seconds : null;
+  });
   const [isReady, setIsReady] = useState(false);
   const [isEntered, setIsEntered] = useState(false);
   const [chapterBoundary, setChapterBoundary] = useState(null);
@@ -51,6 +56,8 @@ const RSVPReader = ({
       baseWpm: initialWpm,
       initialPosition: readingPosition,
       completedChapterIds,
+      timingOptions: toEngineTimingOptions(readingSettings),
+      rewindWords: readingSettings?.rewindWords,
     });
   }
 
@@ -82,10 +89,21 @@ const RSVPReader = ({
       return;
     }
 
-    setIsReady(false);
-    setCountdown(3);
+    const countdownSeconds = readingSettings?.countdownSeconds ?? 3;
+    if (countdownSeconds === 0) {
+      setCountdown(null);
+      setIsReady(true);
+      playTimerRef.current = window.setTimeout(() => {
+        playTimerRef.current = null;
+        engine.play();
+      }, 700);
+      return;
+    }
 
-    let currentCount = 3;
+    setIsReady(false);
+    setCountdown(countdownSeconds);
+
+    let currentCount = countdownSeconds;
 
     countdownTimerRef.current = window.setInterval(() => {
       currentCount -= 1;
@@ -247,6 +265,8 @@ const RSVPReader = ({
       engineRef.current?.pause();
       flushReadingActivity();
     };
+    // The reader is remounted for each immersive session.
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -355,6 +375,7 @@ const RSVPReader = ({
         >
           <span
             key={countdown}
+            data-testid="immersive-countdown"
             className="text-7xl font-medium text-primary/70"
           >
             {countdown}

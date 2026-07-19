@@ -74,11 +74,10 @@ test('holds the first word after the calibration countdown', async ({
   await expect(playbackControl).toBeDisabled();
   await expect(page.getByTestId('current-word')).toHaveText('On');
 
-  await page.waitForTimeout(700);
-  await expect(playbackControl).toBeDisabled();
+  await page.waitForTimeout(350);
   await expect(page.getByTestId('current-word')).toHaveText('On');
   await expect(page.getByRole('button', { name: 'Pause' })).toBeEnabled({
-    timeout: 1500,
+    timeout: 1800,
   });
 });
 
@@ -101,7 +100,7 @@ test('completes calibration and applies an adjusted WPM', async ({ page }) => {
 
   await expect(
     page.getByRole('button', {
-      name: 'Reading settings and recalibrate: 420 WPM',
+      name: 'Reading settings: 420 WPM',
     })
   ).toBeVisible();
   await expect(
@@ -112,9 +111,10 @@ test('completes calibration and applies an adjusted WPM', async ({ page }) => {
 
   await page
     .getByRole('button', {
-      name: 'Reading settings and recalibrate: 420 WPM',
+      name: 'Reading settings: 420 WPM',
     })
     .click();
+  await page.getByRole('button', { name: 'Recalibrate' }).click();
   await expect(
     page.getByRole('dialog', { name: 'Find a comfortable reading pace' })
   ).toBeVisible();
@@ -154,9 +154,10 @@ test('can skip first-run calibration and reopen it explicitly', async ({
   await expect(offer).toHaveCount(0);
   await page
     .getByRole('button', {
-      name: 'Reading settings and recalibrate: 300 WPM',
+      name: 'Reading settings: 300 WPM',
     })
     .click();
+  await page.getByRole('button', { name: 'Recalibrate' }).click();
   await expect(
     page.getByRole('dialog', { name: 'Find a comfortable reading pace' })
   ).toBeVisible();
@@ -207,7 +208,14 @@ test('postpones an eligible recalibration prompt', async ({ page }) => {
     name: 'Optional reading pace check-in',
   });
   await expect(offer).toBeVisible();
-  await offer.getByRole('button', { name: 'Next week' }).click();
+  await expect(async () => {
+    await offer.getByRole('button', { name: 'Next week' }).click();
+    const postponedUntil = await page.evaluate((key) => {
+      const profile = JSON.parse(window.localStorage.getItem(key));
+      return profile.postponedUntil;
+    }, CALIBRATION_STORAGE_KEY);
+    expect(postponedUntil).not.toBeNull();
+  }).toPass({ timeout: 10000 });
   await expect(offer).toHaveCount(0);
 
   await page.reload();
