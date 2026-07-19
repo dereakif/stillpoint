@@ -385,10 +385,10 @@ Remember documents, positions, and preferences across sessions.
 
 ## Clipboard and error feedback
 
-- [ ] Replace console-only clipboard errors with user-visible feedback.
-- [ ] Distinguish permission denial from empty clipboard content.
-- [ ] Explain secure-context requirements when clipboard access is unavailable.
-- [ ] Avoid replacing the current document until clipboard text is validated.
+- [x] Replace console-only clipboard errors with user-visible feedback.
+- [x] Distinguish permission denial from empty clipboard content.
+- [x] Explain secure-context requirements when clipboard access is unavailable.
+- [x] Avoid replacing the current document until clipboard text is validated.
 
 ## Completion criteria
 

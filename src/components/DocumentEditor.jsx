@@ -1,13 +1,55 @@
-import { FileText, ListTree, X } from 'lucide-react';
+import { ClipboardPaste, FileText, ListTree, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { createDocumentModel } from '../utils';
+import {
+  ClipboardImportError,
+  readDocumentFromClipboard,
+} from '../clipboardImport';
 
 const DocumentEditor = ({ text, onSave, onCancel }) => {
   const [draft, setDraft] = useState(text);
+  const [isReadingClipboard, setIsReadingClipboard] = useState(false);
+  const [pendingClipboardText, setPendingClipboardText] = useState(null);
+  const [clipboardFeedback, setClipboardFeedback] = useState(null);
   const previewDocument = useMemo(
     () => createDocumentModel(draft, { sourceFormat: 'markdown' }),
     [draft]
   );
+
+  const applyClipboardText = (clipboardText) => {
+    setDraft(clipboardText);
+    setPendingClipboardText(null);
+    setClipboardFeedback({
+      tone: 'success',
+      message:
+        'Clipboard text is ready to review. Select Read document when you’re ready.',
+    });
+  };
+
+  const pasteFromClipboard = async () => {
+    setClipboardFeedback(null);
+    setIsReadingClipboard(true);
+
+    try {
+      const clipboardDocument =
+        await readDocumentFromClipboard(previewDocument);
+      if (draft.trim()) {
+        setPendingClipboardText(clipboardDocument.source.text);
+      } else {
+        applyClipboardText(clipboardDocument.source.text);
+      }
+    } catch (error) {
+      setClipboardFeedback({
+        tone: 'error',
+        message:
+          error instanceof ClipboardImportError
+            ? error.message
+            : 'Stillpoint could not read the clipboard. Your editor text was left unchanged.',
+      });
+    } finally {
+      setIsReadingClipboard(false);
+    }
+  };
 
   const replaceSourceRange = (range, replacement) => {
     const normalizedDraft = draft.replace(/\r\n?/g, '\n');
@@ -52,7 +94,44 @@ const DocumentEditor = ({ text, onSave, onCancel }) => {
           <div className="flex items-center gap-2 border-b border-border px-5 py-3">
             <FileText className="size-4 text-muted-foreground" />
             <span className="text-sm font-medium">Markdown document</span>
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm ml-auto"
+              disabled={isReadingClipboard}
+              onClick={pasteFromClipboard}
+            >
+              {isReadingClipboard ? (
+                <span className="loading loading-spinner loading-xs" />
+              ) : (
+                <ClipboardPaste className="size-4" />
+              )}
+              {isReadingClipboard
+                ? 'Reading clipboard…'
+                : 'Paste from clipboard'}
+            </button>
           </div>
+
+          {clipboardFeedback && (
+            <div
+              role={clipboardFeedback.tone === 'error' ? 'alert' : 'status'}
+              data-testid="clipboard-feedback"
+              className={`flex items-start gap-3 border-b px-5 py-3 text-sm ${
+                clipboardFeedback.tone === 'error'
+                  ? 'border-error/30 bg-error/10'
+                  : 'border-success/30 bg-success/10'
+              }`}
+            >
+              <p className="min-w-0 flex-1">{clipboardFeedback.message}</p>
+              <button
+                type="button"
+                className="btn btn-ghost btn-xs shrink-0"
+                aria-label="Dismiss clipboard message"
+                onClick={() => setClipboardFeedback(null)}
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
 
           <textarea
             value={draft}
@@ -138,6 +217,48 @@ const DocumentEditor = ({ text, onSave, onCancel }) => {
           </ol>
         </aside>
       </div>
+
+      {pendingClipboardText !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-base-300/65 p-4 backdrop-blur-sm">
+          <section
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="replace-editor-text-title"
+            aria-describedby="replace-editor-text-description"
+            className="w-full max-w-md rounded-2xl border border-base-300 bg-base-100 p-6 shadow-2xl"
+          >
+            <h2
+              id="replace-editor-text-title"
+              className="text-lg font-semibold"
+            >
+              Replace editor text?
+            </h2>
+            <p
+              id="replace-editor-text-description"
+              className="mt-2 text-sm text-base-content/65"
+            >
+              Pasting from the clipboard will replace the text currently in the
+              editor. You can review the clipboard text before starting to read.
+            </p>
+            <div className="mt-6 flex flex-wrap justify-end gap-3">
+              <button
+                type="button"
+                className="btn btn-ghost"
+                onClick={() => setPendingClipboardText(null)}
+              >
+                Keep current text
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => applyClipboardText(pendingClipboardText)}
+              >
+                Replace text
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
 
       <div className="relative z-20 flex flex-wrap justify-end gap-3 bg-base-100 py-2">
         {onCancel && (

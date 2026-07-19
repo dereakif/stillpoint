@@ -117,11 +117,6 @@ const KeyboardHints = ({ wpm }) => {
         Exit
       </span>
 
-      <span className="flex items-center gap-2">
-        <kbd className="kbd kbd-sm">C</kbd>
-        Continue
-      </span>
-
       <span className="font-mono text-base-content/80">{wpm} WPM</span>
     </div>
   );

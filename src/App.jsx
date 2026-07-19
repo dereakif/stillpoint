@@ -635,11 +635,6 @@ function App() {
         <RSVPReader
           key={readingSessionId}
           document={document}
-          onDocumentChange={(newDocument) => {
-            setDocument(newDocument);
-            setCompletedChapterIds([]);
-            setNavigationScrollY(0);
-          }}
           readingPosition={readingPosition}
           onReadingPositionChange={setReadingPosition}
           initialWpm={wpm}

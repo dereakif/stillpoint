@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect } from 'react';
-import { createDocumentModel, createRSVPPlayer } from '../utils';
+import { createRSVPPlayer } from '../utils';
 import WordDisplay from './WordDisplay';
 import Toolbar from './Toolbar';
 import ChapterBoundary from './ChapterBoundary';
@@ -8,7 +8,6 @@ import { toEngineTimingOptions } from '../storage/readingSettings';
 
 const RSVPReader = ({
   document,
-  onDocumentChange,
   readingPosition,
   onReadingPositionChange,
   initialWpm = 300,
@@ -177,30 +176,6 @@ const RSVPReader = ({
     }, 1000);
   };
 
-  const loadClipboard = async () => {
-    try {
-      const newText = await navigator.clipboard.readText();
-
-      if (!newText.trim()) return;
-
-      const newDocument = createDocumentModel(newText, {
-        id: document.id,
-        title: document.title,
-        sourceFormat: document.source.format,
-        revision: document.source.revision + 1,
-      });
-
-      onDocumentChange(newDocument);
-      clearAutomaticContinuation();
-      setAutomaticContinuation(null);
-      setChapterBoundary(null);
-      engineRef.current.loadDocument(newDocument);
-      startCountdown();
-    } catch (error) {
-      console.log(error);
-    }
-  };
-
   useEffect(() => {
     const engine = engineRef.current;
     const unsubscribePosition = engine.subscribe(
@@ -271,7 +246,7 @@ const RSVPReader = ({
   }, []);
 
   useEffect(() => {
-    const handleKeyDown = async (event) => {
+    const handleKeyDown = (event) => {
       const engine = engineRef.current;
       if (!engine || isExiting) return;
 
@@ -314,12 +289,6 @@ const RSVPReader = ({
         case 'ArrowDown':
           event.preventDefault();
           engine.setWpm(engine.getWpm() - 10);
-          break;
-
-        case 'c':
-        case 'C':
-          event.preventDefault();
-          await loadClipboard();
           break;
 
         default:
