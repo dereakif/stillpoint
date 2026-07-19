@@ -6,6 +6,7 @@ import {
   Gauge,
   Library,
   Menu,
+  Palette,
   Play,
   X,
 } from 'lucide-react';
@@ -13,6 +14,21 @@ import { getReadingPositionSummary } from '../utils';
 import TableOfContents from './TableOfContents';
 
 const RETURN_HIGHLIGHT_DURATION = 1100;
+const DOCUMENT_WIDTH_CLASSES = {
+  narrow: 'max-w-2xl',
+  comfortable: 'max-w-3xl',
+  wide: 'max-w-4xl',
+};
+const DOCUMENT_FONT_CLASSES = {
+  serif: 'document-font-serif',
+  sans: 'document-font-sans',
+  system: 'document-font-system',
+};
+const LINE_HEIGHT_CLASSES = {
+  compact: 'leading-7 sm:leading-8',
+  comfortable: 'leading-8 sm:leading-9',
+  relaxed: 'leading-9 sm:leading-10',
+};
 
 const DocumentView = ({
   document: documentModel,
@@ -24,7 +40,9 @@ const DocumentView = ({
   onChapterCompletionBehaviorChange,
   calibrationOffer = null,
   currentWpm = 300,
+  appearanceSettings = {},
   onReadingSettings,
+  onAppearanceSettings,
   onCalibrate,
   onSkipCalibration,
   onPostponeCalibration,
@@ -38,6 +56,15 @@ const DocumentView = ({
   const paragraphs = documentModel.sections.flatMap(
     (section) => section.blocks
   );
+  const documentWidthClass =
+    DOCUMENT_WIDTH_CLASSES[appearanceSettings.documentWidth] ??
+    DOCUMENT_WIDTH_CLASSES.comfortable;
+  const documentFontClass =
+    DOCUMENT_FONT_CLASSES[appearanceSettings.documentFont] ??
+    DOCUMENT_FONT_CLASSES.serif;
+  const lineHeightClass =
+    LINE_HEIGHT_CLASSES[appearanceSettings.lineHeight] ??
+    LINE_HEIGHT_CLASSES.comfortable;
   const positionSummary = getReadingPositionSummary(
     documentModel,
     readingPosition
@@ -428,6 +455,16 @@ const DocumentView = ({
           <button
             type="button"
             className="btn btn-ghost btn-sm shrink-0"
+            aria-label={`Appearance settings: ${appearanceSettings.theme ?? 'dark'} theme`}
+            onClick={onAppearanceSettings}
+          >
+            <Palette className="size-4" />
+            <span className="hidden xl:inline">Theme</span>
+          </button>
+
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm shrink-0"
             aria-label="Open library"
             onClick={onLibrary}
           >
@@ -559,7 +596,7 @@ const DocumentView = ({
         <main className="min-w-0">
           <article
             aria-label="Document content"
-            className="mx-auto max-w-3xl space-y-6 px-4 pb-44 pt-10 text-lg leading-8 text-base-content/90 sm:px-8 sm:pt-14 sm:text-xl sm:leading-9"
+            className={`mx-auto space-y-6 px-4 pb-44 pt-10 text-lg text-base-content/90 sm:px-8 sm:pt-14 sm:text-xl ${documentWidthClass} ${documentFontClass} ${lineHeightClass}`}
             onClick={handleDocumentClick}
             onFocusCapture={handleDocumentFocus}
             onKeyDown={handleDocumentKeyDown}

@@ -1,53 +1,140 @@
 @import 'tailwindcss';
 
 @plugin "daisyui" {
-  themes: dracula --default;
-  logs: true;
+    themes: dracula --default;
+    logs: true;
+}
+
+:root,
+[data-theme='dark'] {
+    color-scheme: dark;
+    --color-base-100: #111318;
+    --color-base-200: #191c23;
+    --color-base-300: #242833;
+    --color-base-content: #e8eaf0;
+    --color-primary: #c4b5fd;
+    --color-primary-content: #21183d;
+    --color-secondary: #67e8f9;
+    --color-secondary-content: #10252a;
+    --color-error: #fda4af;
+    --color-error-content: #321116;
+    --orp-violet: #c4b5fd;
+    --orp-cyan: #67e8f9;
+    --orp-amber: #fcd34d;
+    --orp-rose: #fda4af;
+    --orp-accent: var(--orp-violet);
+}
+
+[data-theme='light'] {
+    color-scheme: light;
+    --color-base-100: #fafaf8;
+    --color-base-200: #f0f0ec;
+    --color-base-300: #e2e3de;
+    --color-base-content: #25282d;
+    --color-primary: #6d28d9;
+    --color-primary-content: #ffffff;
+    --color-secondary: #0e7490;
+    --color-secondary-content: #ffffff;
+    --color-error: #b91c1c;
+    --color-error-content: #ffffff;
+    --orp-violet: #6d28d9;
+    --orp-cyan: #0e7490;
+    --orp-amber: #92400e;
+    --orp-rose: #be123c;
+}
+
+[data-theme='sepia'] {
+    color-scheme: light;
+    --color-base-100: #f5ebd8;
+    --color-base-200: #eaddc5;
+    --color-base-300: #dccbae;
+    --color-base-content: #3f3328;
+    --color-primary: #70407f;
+    --color-primary-content: #fff9ed;
+    --color-secondary: #166070;
+    --color-secondary-content: #fff9ed;
+    --color-error: #9b2c2c;
+    --color-error-content: #fff9ed;
+    --orp-violet: #70407f;
+    --orp-cyan: #166070;
+    --orp-amber: #8a4b08;
+    --orp-rose: #9f3048;
+}
+
+[data-orp-accent='violet'] {
+    --orp-accent: var(--orp-violet);
+}
+
+[data-orp-accent='cyan'] {
+    --orp-accent: var(--orp-cyan);
+}
+
+[data-orp-accent='amber'] {
+    --orp-accent: var(--orp-amber);
+}
+
+[data-orp-accent='rose'] {
+    --orp-accent: var(--orp-rose);
+}
+
+[data-reduced-effects='true'] *,
+[data-reduced-effects='true'] *::before,
+[data-reduced-effects='true'] *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    backdrop-filter: none !important;
+}
+
+.document-font-serif {
+    font-family: Georgia, 'Times New Roman', serif;
+}
+
+.document-font-sans {
+    font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+}
+
+.document-font-system {
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 .document-token::selection {
-  background-color: color-mix(
-    in oklab,
-    var(--color-secondary) 45%,
-    transparent
-  );
+    background-color: color-mix(in oklab,
+            var(--color-secondary) 45%,
+            transparent);
 }
 
 .return-word-highlight {
-  border-radius: 0.2em;
-  background-color: color-mix(in oklab, var(--color-primary) 30%, transparent);
-  box-shadow: 0 0 0.8em
-    color-mix(in oklab, var(--color-primary) 35%, transparent);
-  color: inherit;
-  animation: return-word-highlight-fade 1.1s ease-out forwards;
+    border-radius: 0.2em;
+    background-color: color-mix(in oklab, var(--color-primary) 30%, transparent);
+    box-shadow: 0 0 0.8em color-mix(in oklab, var(--color-primary) 35%, transparent);
+    color: inherit;
+    animation: return-word-highlight-fade 1.1s ease-out forwards;
 }
 
 @keyframes return-word-highlight-fade {
-  0%,
-  30% {
-    background-color: color-mix(
-      in oklab,
-      var(--color-primary) 30%,
-      transparent
-    );
-    box-shadow: 0 0 0.8em
-      color-mix(in oklab, var(--color-primary) 35%, transparent);
-  }
 
-  100% {
-    background-color: transparent;
-    box-shadow: 0 0 0 transparent;
-  }
+    0%,
+    30% {
+        background-color: color-mix(in oklab,
+                var(--color-primary) 30%,
+                transparent);
+        box-shadow: 0 0 0.8em color-mix(in oklab, var(--color-primary) 35%, transparent);
+    }
+
+    100% {
+        background-color: transparent;
+        box-shadow: 0 0 0 transparent;
+    }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .return-word-highlight {
-    animation: none;
-    background-color: color-mix(
-      in oklab,
-      var(--color-primary) 20%,
-      transparent
-    );
-    box-shadow: none;
-  }
+    .return-word-highlight {
+        animation: none;
+        background-color: color-mix(in oklab,
+                var(--color-primary) 20%,
+                transparent);
+        box-shadow: none;
+    }
 }

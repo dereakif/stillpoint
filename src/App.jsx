@@ -5,6 +5,7 @@ import DocumentLibrary from './components/DocumentLibrary';
 import DocumentView from './components/DocumentView';
 import ReadingCalibration from './components/ReadingCalibration';
 import ReadingSettings from './components/ReadingSettings';
+import AppearanceSettings from './components/AppearanceSettings';
 import {
   createDocumentModel,
   positionToTokenIndex,
@@ -32,6 +33,10 @@ import {
   loadReadingSettings,
   saveReadingSettings,
 } from './storage/readingSettings';
+import {
+  loadAppearanceSettings,
+  saveAppearanceSettings,
+} from './storage/appearanceSettings';
 
 const MODE_TRANSITION_DURATION = 800;
 const SESSION_WRITE_DEBOUNCE = 1500;
@@ -86,6 +91,11 @@ function App() {
   );
   const [calibrationMode, setCalibrationMode] = useState(null);
   const [isReadingSettingsOpen, setIsReadingSettingsOpen] = useState(false);
+  const [isAppearanceSettingsOpen, setIsAppearanceSettingsOpen] =
+    useState(false);
+  const [appearanceSettings, setAppearanceSettings] = useState(
+    loadAppearanceSettings
+  );
   const [readingSettings, setReadingSettings] = useState(() => {
     const loadedSettings = loadReadingSettings();
     try {
@@ -182,6 +192,13 @@ function App() {
   }, []);
 
   useEffect(() => {
+    const root = window.document.documentElement;
+    root.dataset.theme = appearanceSettings.theme;
+    root.dataset.orpAccent = appearanceSettings.orpAccent;
+    root.dataset.reducedEffects = String(appearanceSettings.reducedEffects);
+  }, [appearanceSettings]);
+
+  useEffect(() => {
     window.clearTimeout(sessionWriteTimerRef.current);
     if (!document.source.text.trim() || !readingPosition) return undefined;
 
@@ -211,6 +228,12 @@ function App() {
     setReadingSettings((current) =>
       saveReadingSettings({ ...current, wpm: nextWpm })
     );
+  };
+
+  const applyAppearanceSettings = (nextSettings) => {
+    const savedSettings = saveAppearanceSettings(nextSettings);
+    setAppearanceSettings(savedSettings);
+    setIsAppearanceSettingsOpen(false);
   };
 
   const applyReadingSettings = (nextSettings) => {
@@ -499,7 +522,9 @@ function App() {
                 : null
           }
           currentWpm={wpm}
+          appearanceSettings={appearanceSettings}
           onReadingSettings={() => setIsReadingSettingsOpen(true)}
+          onAppearanceSettings={() => setIsAppearanceSettingsOpen(true)}
           onCalibrate={() =>
             setCalibrationMode(
               calibrationProfile.status === 'new' ? 'first-run' : 'explicit'
@@ -513,6 +538,14 @@ function App() {
           onLibrary={openLibrary}
           onEdit={() => setMode('edit')}
           onStartReading={startReading}
+        />
+      )}
+
+      {isAppearanceSettingsOpen && (
+        <AppearanceSettings
+          settings={appearanceSettings}
+          onApply={applyAppearanceSettings}
+          onClose={() => setIsAppearanceSettingsOpen(false)}
         />
       )}
 
@@ -554,6 +587,7 @@ function App() {
           onReadingPositionChange={setReadingPosition}
           initialWpm={wpm}
           readingSettings={readingSettings}
+          appearanceSettings={appearanceSettings}
           onWpmChange={updateReadingWpm}
           completedChapterIds={completedChapterIds}
           onChapterComplete={(chapterId) =>

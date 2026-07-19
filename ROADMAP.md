@@ -366,14 +366,14 @@ Remember documents, positions, and preferences across sessions.
 
 ## Appearance settings
 
-- [ ] Add theme selection.
-- [ ] Expose theme selection from the minimal document top bar without turning it into a settings toolbar.
-- [ ] Add document font selection.
-- [ ] Add document width and line-height controls.
-- [ ] Add immersive word-size control.
-- [ ] Add ORP accent-color selection.
-- [ ] Add reduced-effects preference in addition to system reduced motion.
-- [ ] Validate contrast for every supported theme.
+- [x] Add theme selection.
+- [x] Expose theme selection from the minimal document top bar without turning it into a settings toolbar.
+- [x] Add document font selection.
+- [x] Add document width and line-height controls.
+- [x] Add immersive word-size control.
+- [x] Add ORP accent-color selection.
+- [x] Add reduced-effects preference in addition to system reduced motion.
+- [x] Validate contrast for every supported theme.
 
 ## Navigation settings
 

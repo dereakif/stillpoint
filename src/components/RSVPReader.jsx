@@ -13,6 +13,7 @@ const RSVPReader = ({
   onReadingPositionChange,
   initialWpm = 300,
   readingSettings,
+  appearanceSettings,
   onWpmChange,
   completedChapterIds = [],
   onChapterComplete,
@@ -365,7 +366,10 @@ const RSVPReader = ({
             : 'scale-95 opacity-30 blur-sm'
         }`}
       >
-        <WordDisplay engineRef={engineRef} />
+        <WordDisplay
+          engineRef={engineRef}
+          wordSize={appearanceSettings?.immersiveWordSize}
+        />
       </div>
 
       {countdown !== null && (

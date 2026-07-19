@@ -3,7 +3,17 @@ import { splitAtORP } from '../utils';
 
 const HORIZONTAL_INSET = 32;
 
-const WordDisplay = ({ engineRef, showChapterProgress = true }) => {
+const WORD_SIZE_CLASSES = {
+  small: 'text-2xl md:text-6xl',
+  medium: 'text-3xl md:text-7xl',
+  large: 'text-4xl md:text-8xl',
+};
+
+const WordDisplay = ({
+  engineRef,
+  showChapterProgress = true,
+  wordSize = 'medium',
+}) => {
   const wrapperRef = useRef(null);
   const beforeRef = useRef(null);
   const pivotRef = useRef(null);
@@ -132,7 +142,7 @@ const WordDisplay = ({ engineRef, showChapterProgress = true }) => {
                 role="status"
                 aria-live="polite"
                 data-testid="current-word"
-                className="relative flex w-full whitespace-nowrap font-mono text-3xl font-bold tracking-wider md:text-7xl"
+                className={`relative flex w-full whitespace-nowrap font-mono font-bold tracking-wider ${WORD_SIZE_CLASSES[wordSize] ?? WORD_SIZE_CLASSES.medium}`}
               >
                 <span
                   ref={beforeRef}
@@ -141,7 +151,7 @@ const WordDisplay = ({ engineRef, showChapterProgress = true }) => {
                 <span
                   ref={pivotRef}
                   data-testid="word-pivot"
-                  className="shrink-0 text-primary"
+                  className="shrink-0 text-(--orp-accent)"
                 />
                 <span
                   ref={afterRef}
