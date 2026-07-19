@@ -59,7 +59,7 @@ describe('document record migrations', () => {
     });
 
     expect(record.readingSession.completedChapterIds).toEqual(['section-1']);
-    expect(record.readingSession.wpm).toBe(800);
+    expect(record.readingSession.wpm).toBe(600);
     expect(record.readingSession.navigationScrollY).toBe(0);
   });
 });

@@ -1,16 +1,26 @@
-export const CALIBRATION_PROFILE_SCHEMA_VERSION = 2;
-export const CALIBRATION_PASSAGE_VERSION = 1;
+import {
+  CALIBRATION_PASSAGES,
+  getCalibrationPassageWordCount,
+} from '../calibrationPassages';
+import {
+  DEFAULT_READING_WPM,
+  MAX_CALIBRATION_RECOMMENDATION_WPM,
+  MAX_READING_WPM,
+  MIN_CALIBRATION_RECOMMENDATION_WPM,
+  MIN_READING_WPM,
+  READING_WPM_STEP,
+} from '../readingSpeed';
+
+export const CALIBRATION_PROFILE_SCHEMA_VERSION = 4;
+export const CALIBRATION_PASSAGE_VERSION = CALIBRATION_PASSAGES[0].version;
 export const CALIBRATION_STORAGE_KEY = 'stillpoint.calibrationProfile';
 
-export const CALIBRATION_PASSAGE =
-  'On a clear Saturday morning, Maya took the longer path to the neighborhood market. The route followed a narrow stream, passed a playground, and curved behind a row of old brick houses. She usually hurried, but today she noticed small details: a bicycle bell in the distance, sunlight moving across the water, and the smell of bread from a corner bakery. At the market, farmers arranged bright peppers, apples, and herbs beneath striped tents. Maya bought a loaf, two pears, and a bunch of mint. On her walk home, she stopped on a wooden bridge and watched a family of ducks drift through the reeds. The extra distance had added only a few minutes to her trip, yet the morning felt larger and more memorable. She decided that whenever time allowed, she would choose a route that gave her something new to notice.';
+// Legacy aliases retained for existing stored history and integrations.
+export const CALIBRATION_PASSAGE = CALIBRATION_PASSAGES[0].text;
+export const CALIBRATION_PASSAGE_WORD_COUNT = getCalibrationPassageWordCount(
+  CALIBRATION_PASSAGES[0]
+);
 
-export const CALIBRATION_PASSAGE_WORD_COUNT =
-  CALIBRATION_PASSAGE.trim().split(/\s+/).length;
-
-const DEFAULT_WPM = 300;
-const MIN_WPM = 100;
-const MAX_WPM = 800;
 const RECALIBRATION_WORD_THRESHOLD = 10000;
 const RECALIBRATION_TIME_THRESHOLD_MS = 45 * 60 * 1000;
 const POSTPONEMENT_MS = 7 * 24 * 60 * 60 * 1000;
@@ -31,7 +41,25 @@ const nonNegativeNumber = (value, fallback = 0) =>
 const sanitizeWpm = (value, fallback = null) => {
   const number = finiteNumber(value, NaN);
   if (!Number.isFinite(number)) return fallback;
-  return Math.round(clamp(number, MIN_WPM, MAX_WPM) / 10) * 10;
+  return (
+    Math.round(
+      clamp(number, MIN_READING_WPM, MAX_READING_WPM) / READING_WPM_STEP
+    ) * READING_WPM_STEP
+  );
+};
+
+const sanitizeRecommendation = (value, fallback = null) => {
+  const number = finiteNumber(value, NaN);
+  if (!Number.isFinite(number)) return fallback;
+  return (
+    Math.round(
+      clamp(
+        number,
+        MIN_CALIBRATION_RECOMMENDATION_WPM,
+        MAX_CALIBRATION_RECOMMENDATION_WPM
+      ) / READING_WPM_STEP
+    ) * READING_WPM_STEP
+  );
 };
 
 const sanitizeDate = (value, fallback = null) => {
@@ -70,13 +98,14 @@ const sanitizeHistoryEntry = (entry) => {
   if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return null;
 
   const elapsedMs = nonNegativeNumber(entry.elapsedMs);
-  const measuredWpm = sanitizeWpm(
-    entry.measuredWpm,
-    elapsedMs > 0
-      ? sanitizeWpm((CALIBRATION_PASSAGE_WORD_COUNT * 60000) / elapsedMs)
-      : null
+  const testedWpm = sanitizeWpm(
+    entry.testedWpm ?? entry.measuredWpm,
+    DEFAULT_READING_WPM
   );
-  const recommendation = sanitizeWpm(entry.recommendation, measuredWpm);
+  const recommendation = sanitizeRecommendation(
+    entry.recommendation,
+    testedWpm
+  );
   const acceptedWpm = sanitizeWpm(entry.acceptedWpm, recommendation);
 
   if (acceptedWpm === null) return null;
@@ -86,12 +115,16 @@ const sanitizeHistoryEntry = (entry) => {
       entry.completedAt ?? entry.calibrationDate,
       new Date(0).toISOString()
     ),
+    passageId:
+      typeof entry.passageId === 'string' && entry.passageId
+        ? entry.passageId
+        : null,
     passageVersion:
       Number.isInteger(entry.passageVersion) && entry.passageVersion > 0
         ? entry.passageVersion
         : CALIBRATION_PASSAGE_VERSION,
     elapsedMs,
-    measuredWpm,
+    testedWpm,
     comprehensionCorrect: Boolean(entry.comprehensionCorrect),
     comfort: sanitizeComfort(entry.comfort),
     recommendation: recommendation ?? acceptedWpm,
@@ -236,32 +269,33 @@ export const saveCalibrationProfile = (profile) => {
 };
 
 export const calculateCalibrationRecommendation = ({
-  elapsedMs,
+  testedWpm,
   comprehensionCorrect,
   comfort,
 } = {}) => {
-  const elapsed = finiteNumber(elapsedMs, 0);
-  if (elapsed <= 0) return DEFAULT_WPM;
-
-  const measuredWpm = (CALIBRATION_PASSAGE_WORD_COUNT * 60000) / elapsed;
-  const comprehensionFactor =
-    typeof comprehensionCorrect === 'number'
-      ? 0.8 + clamp(comprehensionCorrect, 0, 1) * 0.2
-      : comprehensionCorrect
-        ? 1
-        : 0.8;
-  const comfortFactor =
+  const testedPace = sanitizeWpm(testedWpm, DEFAULT_READING_WPM);
+  const comfortAdjustment =
     typeof comfort === 'number'
-      ? clamp(comfort, 0.8, 1.2)
+      ? Math.round((clamp(comfort, 0.8, 1.2) - 1) * 200)
       : sanitizeComfort(comfort) === 'too-slow'
-        ? 1.1
+        ? 40
         : sanitizeComfort(comfort) === 'too-fast'
-          ? 0.9
-          : 1;
+          ? -40
+          : 0;
+  const comprehensionAdjustment =
+    comprehensionCorrect === undefined
+      ? 0
+      : typeof comprehensionCorrect === 'number'
+        ? comprehensionCorrect >= 0.75
+          ? 0
+          : -50
+        : comprehensionCorrect
+          ? 0
+          : -50;
 
-  return sanitizeWpm(
-    measuredWpm * comprehensionFactor * comfortFactor,
-    DEFAULT_WPM
+  return sanitizeRecommendation(
+    testedPace + comfortAdjustment + comprehensionAdjustment,
+    DEFAULT_READING_WPM
   );
 };
 
@@ -269,19 +303,24 @@ export const completeCalibration = (profile, result = {}, acceptedWpm) => {
   const normalized = normalizeProfile(profile);
   const completedAt = dateFromNow(result.completedAt).toISOString();
   const elapsedMs = nonNegativeNumber(result.elapsedMs);
-  const measuredWpm = sanitizeWpm(
-    elapsedMs > 0
-      ? (CALIBRATION_PASSAGE_WORD_COUNT * 60000) / elapsedMs
-      : DEFAULT_WPM,
-    DEFAULT_WPM
-  );
-  const recommendation = calculateCalibrationRecommendation(result);
+  const testedWpm = sanitizeWpm(result.testedWpm, DEFAULT_READING_WPM);
+  const recommendation = calculateCalibrationRecommendation({
+    ...result,
+    testedWpm,
+  });
   const accepted = sanitizeWpm(acceptedWpm, recommendation);
   const entry = {
     completedAt,
-    passageVersion: CALIBRATION_PASSAGE_VERSION,
+    passageId:
+      typeof result.passageId === 'string' && result.passageId
+        ? result.passageId
+        : null,
+    passageVersion:
+      Number.isInteger(result.passageVersion) && result.passageVersion > 0
+        ? result.passageVersion
+        : CALIBRATION_PASSAGE_VERSION,
     elapsedMs,
-    measuredWpm,
+    testedWpm,
     comprehensionCorrect: Boolean(result.comprehensionCorrect),
     comfort: sanitizeComfort(result.comfort),
     recommendation,
@@ -293,7 +332,7 @@ export const completeCalibration = (profile, result = {}, acceptedWpm) => {
     status: 'completed',
     currentRecommendation: accepted,
     calibrationDate: completedAt,
-    passageVersion: CALIBRATION_PASSAGE_VERSION,
+    passageVersion: entry.passageVersion,
     history: [...normalized.history, entry],
     postponedUntil: null,
     readingStats: {

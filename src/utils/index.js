@@ -1,3 +1,5 @@
+import { clampReadingWpm } from '../readingSpeed';
+
 /**
  * @typedef {object} RSVPToken
  * @property {string} text
@@ -637,7 +639,7 @@ export const createRSVPPlayer = (
   let index = positionToTokenIndex(tokens, initialPosition);
   let timerId = null;
   let playing = false;
-  let wpm = baseWpm;
+  let wpm = clampReadingWpm(baseWpm);
   let chapterDefinitions =
     typeof content === 'string'
       ? []
@@ -942,7 +944,7 @@ export const createRSVPPlayer = (
   });
 
   player.setWpm = (newWpm) => {
-    wpm = Math.max(100, Math.min(800, newWpm));
+    wpm = clampReadingWpm(newWpm);
     emit('wpmChange', wpm);
 
     if (playing) {

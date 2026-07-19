@@ -45,12 +45,10 @@ describe('calibration passage', () => {
 });
 
 describe('calculateCalibrationRecommendation', () => {
-  const elapsedFor300Wpm = (CALIBRATION_PASSAGE_WORD_COUNT / 300) * 60000;
-
-  test('uses measured speed and rounds to ten WPM', () => {
+  test('keeps a comfortable, understood tested pace', () => {
     expect(
       calculateCalibrationRecommendation({
-        elapsedMs: elapsedFor300Wpm,
+        testedWpm: 300,
         comprehensionCorrect: true,
         comfort: 'comfortable',
       })
@@ -60,46 +58,46 @@ describe('calculateCalibrationRecommendation', () => {
   test('adjusts for comprehension and comfort together', () => {
     expect(
       calculateCalibrationRecommendation({
-        elapsedMs: elapsedFor300Wpm,
+        testedWpm: 300,
         comprehensionCorrect: false,
         comfort: 'too-fast',
       })
-    ).toBe(220);
+    ).toBe(210);
     expect(
       calculateCalibrationRecommendation({
-        elapsedMs: elapsedFor300Wpm,
+        testedWpm: 300,
         comprehensionCorrect: true,
         comfort: 'too-slow',
       })
-    ).toBe(330);
+    ).toBe(340);
   });
 
   test('accepts a comprehension ratio and numeric comfort factor', () => {
     expect(
       calculateCalibrationRecommendation({
-        elapsedMs: elapsedFor300Wpm,
+        testedWpm: 300,
         comprehensionCorrect: 0.5,
         comfort: 1.2,
       })
-    ).toBe(320);
+    ).toBe(290);
   });
 
   test('clamps extreme results and handles invalid timing safely', () => {
     expect(
       calculateCalibrationRecommendation({
-        elapsedMs: 1,
+        testedWpm: 600,
         comprehensionCorrect: true,
         comfort: 'too-slow',
       })
-    ).toBe(800);
+    ).toBe(500);
     expect(
       calculateCalibrationRecommendation({
-        elapsedMs: 60 * 60 * 1000,
+        testedWpm: 150,
         comprehensionCorrect: false,
         comfort: 'too-fast',
       })
-    ).toBe(100);
-    expect(calculateCalibrationRecommendation({ elapsedMs: 0 })).toBe(300);
+    ).toBe(180);
+    expect(calculateCalibrationRecommendation()).toBe(300);
   });
 });
 
@@ -177,7 +175,7 @@ describe('profile persistence and migration', () => {
     const profile = loadCalibrationProfile();
 
     expect(profile.schemaVersion).toBe(CALIBRATION_PROFILE_SCHEMA_VERSION);
-    expect(profile.currentRecommendation).toBe(800);
+    expect(profile.currentRecommendation).toBe(600);
     expect(profile.calibrationDate).toBe('2025-05-01T10:00:00.000Z');
     expect(profile.history).toHaveLength(1);
     expect(profile.history[0]).toEqual(
@@ -227,7 +225,8 @@ describe('calibration lifecycle', () => {
     const first = completeCalibration(
       initial,
       {
-        elapsedMs: (CALIBRATION_PASSAGE_WORD_COUNT / 300) * 60000,
+        elapsedMs: 30000,
+        testedWpm: 300,
         comprehensionCorrect: true,
         comfort: 'comfortable',
         completedAt: '2026-02-01T10:00:00Z',
@@ -237,7 +236,8 @@ describe('calibration lifecycle', () => {
     const second = completeCalibration(
       first,
       {
-        elapsedMs: (CALIBRATION_PASSAGE_WORD_COUNT / 400) * 60000,
+        elapsedMs: 30000,
+        testedWpm: 400,
         comprehensionCorrect: false,
         comfort: 'too-fast',
         completedAt: '2026-03-01T10:00:00Z',

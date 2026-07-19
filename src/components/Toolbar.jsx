@@ -1,5 +1,10 @@
 import { FastForward, Pause, Play, Rewind } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import {
+  MAX_READING_WPM,
+  MIN_READING_WPM,
+  READING_WPM_STEP,
+} from '../readingSpeed';
 
 const Toolbar = ({ engineRef }) => {
   const [wpm, setWpm] = useState(300);
@@ -62,9 +67,9 @@ const Toolbar = ({ engineRef }) => {
         <div className="w-full max-w-xs">
           <input
             type="range"
-            min="100"
-            max="800"
-            step="10"
+            min={MIN_READING_WPM}
+            max={MAX_READING_WPM}
+            step={READING_WPM_STEP}
             value={wpm}
             onChange={onChangeWpm}
             className="range"
@@ -72,9 +77,9 @@ const Toolbar = ({ engineRef }) => {
           />
 
           <div className="mt-2 flex justify-between px-0 text-xs">
-            <span>100</span>
+            <span>{MIN_READING_WPM}</span>
             <span>{wpm} WPM</span>
-            <span>800</span>
+            <span>{MAX_READING_WPM}</span>
           </div>
         </div>
       </div>

@@ -8,7 +8,7 @@ The reader highlights each token's Optimal Recognition Point (ORP), adjusts timi
 
 - Focused, single-token reading view
 - ORP highlighting and centered word alignment
-- Adjustable reading speed from 100 to 800 WPM
+- Adjustable reading speed from 150 to 600 WPM
 - Timing adjustments for punctuation, paragraphs, and longer words
 - Rewind and skip-forward controls
 - Synchronized document progress and current-position context

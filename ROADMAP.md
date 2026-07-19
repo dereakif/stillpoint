@@ -499,7 +499,7 @@ These tasks apply throughout all phases.
 
 ## Performance
 
-- [ ] Profile immersive playback at 800 WPM.
+- [ ] Profile immersive playback at the maximum supported 600 WPM.
 - [ ] Profile long-word measurement on mobile hardware.
 - [ ] Avoid unnecessary layout reads and writes per word.
 - [ ] Recalculate visible-word fitting after viewport changes.

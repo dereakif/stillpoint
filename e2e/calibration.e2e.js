@@ -9,12 +9,23 @@ const saveDocument = async (page) => {
   await page.getByRole('button', { name: 'Read document' }).click();
 };
 
-const answerCalibration = async (page) => {
+const answerCalibration = async (
+  page,
+  comfortLabel = 'Comfortable and natural'
+) => {
+  await page.clock.install();
   await page.getByRole('button', { name: 'Start calibration' }).click();
   await expect(page.getByTestId('calibration-passage')).toBeVisible();
-  await page.getByRole('button', { name: 'I finished the passage' }).click();
-  await page.getByLabel('It gave her new things to notice.').check();
-  await page.getByLabel('Comfortable and natural').check();
+  await expect(page.getByTestId('calibration-countdown')).toHaveText('3');
+  await expect(page.getByTestId('current-word')).toHaveText('On');
+  await expect(page.getByTestId('chapter-progress-status')).toHaveCount(0);
+  await expect(page.getByTestId('calibration-word-display')).toHaveCSS(
+    'opacity',
+    '0.15'
+  );
+  await page.clock.runFor(70000);
+  await page.getByLabel('The new bed would receive more sunlight.').check();
+  await page.getByLabel(comfortLabel).check();
   await page.getByRole('button', { name: 'See recommendation' }).click();
 };
 
@@ -25,7 +36,7 @@ const seedEligibleProfile = async (page) => {
       window.localStorage.setItem(
         key,
         JSON.stringify({
-          schemaVersion: 2,
+          schemaVersion: 4,
           status: 'completed',
           currentRecommendation: 320,
           calibrationDate: '2026-01-01T00:00:00.000Z',
@@ -46,6 +57,30 @@ const seedEligibleProfile = async (page) => {
     { key: CALIBRATION_STORAGE_KEY }
   );
 };
+
+test('holds the first word after the calibration countdown', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await saveDocument(page);
+  await page.getByRole('button', { name: 'Try calibration' }).click();
+  await page.getByRole('button', { name: 'Start calibration' }).click();
+
+  await expect(page.getByTestId('calibration-countdown')).toHaveText('3');
+  await expect(page.getByTestId('calibration-countdown')).toHaveCount(0, {
+    timeout: 5000,
+  });
+  const playbackControl = page.getByTestId('calibration-playback-control');
+  await expect(playbackControl).toBeDisabled();
+  await expect(page.getByTestId('current-word')).toHaveText('On');
+
+  await page.waitForTimeout(700);
+  await expect(playbackControl).toBeDisabled();
+  await expect(page.getByTestId('current-word')).toHaveText('On');
+  await expect(page.getByRole('button', { name: 'Pause' })).toBeEnabled({
+    timeout: 1500,
+  });
+});
 
 test('completes calibration and applies an adjusted WPM', async ({ page }) => {
   await page.goto('/');
@@ -88,6 +123,20 @@ test('completes calibration and applies an adjusted WPM', async ({ page }) => {
   );
 });
 
+test('suggests a modest increase when the tested pace feels slow', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await saveDocument(page);
+  await page.getByRole('button', { name: 'Try calibration' }).click();
+  await answerCalibration(page, 'I could comfortably read faster');
+
+  await expect(
+    page.getByRole('slider', { name: 'Adjust recommended reading speed' })
+  ).toHaveValue('340');
+  await expect(page.getByRole('button', { name: 'Use 340 WPM' })).toBeVisible();
+});
+
 test('can skip first-run calibration and reopen it explicitly', async ({
   page,
 }) => {
@@ -113,6 +162,24 @@ test('can skip first-run calibration and reopen it explicitly', async ({
   ).toBeVisible();
 });
 
+test('offers a different passage when distracted at the question step', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await saveDocument(page);
+  await page.getByRole('button', { name: 'Try calibration' }).click();
+  await page.clock.install();
+  await page.getByRole('button', { name: 'Start calibration' }).click();
+  await page.clock.runFor(70000);
+
+  await page.getByRole('button', { name: 'Give it another try' }).click();
+  await expect(page.getByTestId('calibration-countdown')).toHaveText('3');
+  await expect(page.getByTestId('current-word')).toHaveText('Daniel');
+  await expect(
+    page.getByText('How did the crew member confirm who owned the scarf?')
+  ).toHaveCount(0);
+});
+
 test('retries the calibration passage without applying a result', async ({
   page,
 }) => {
@@ -121,8 +188,11 @@ test('retries the calibration passage without applying a result', async ({
   await page.getByRole('button', { name: 'Try calibration' }).click();
   await answerCalibration(page);
 
-  await page.getByRole('button', { name: 'Retry' }).click();
+  await page
+    .getByRole('button', { name: 'Retry with another passage' })
+    .click();
   await expect(page.getByTestId('calibration-passage')).toBeVisible();
+  await expect(page.getByTestId('current-word')).toHaveText('Daniel');
   await expect(
     page.getByRole('slider', { name: 'Adjust recommended reading speed' })
   ).toHaveCount(0);

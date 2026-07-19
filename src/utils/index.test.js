@@ -821,10 +821,10 @@ describe('createRSVPPlayer', () => {
 
     player.subscribe('wpmChange', (wpm) => changes.push(wpm));
     player.setWpm(50);
-    expect(player.getWpm()).toBe(100);
+    expect(player.getWpm()).toBe(150);
     player.setWpm(900);
-    expect(player.getWpm()).toBe(800);
-    expect(changes).toEqual([100, 800]);
+    expect(player.getWpm()).toBe(600);
+    expect(changes).toEqual([150, 600]);
   });
 
   test('redisplays the current token when WPM changes during playback', () => {

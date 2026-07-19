@@ -3,7 +3,7 @@ import { splitAtORP } from '../utils';
 
 const HORIZONTAL_INSET = 32;
 
-const WordDisplay = ({ engineRef }) => {
+const WordDisplay = ({ engineRef, showChapterProgress = true }) => {
   const wrapperRef = useRef(null);
   const beforeRef = useRef(null);
   const pivotRef = useRef(null);
@@ -95,22 +95,24 @@ const WordDisplay = ({ engineRef }) => {
   return (
     <div className="flex flex-1 items-center justify-center px-4 py-12">
       <div className="w-full max-w-5xl">
-        <div
-          data-testid="chapter-progress-status"
-          className="mb-3 px-1 text-xs text-base-content/55"
-        >
-          <div className="mb-1 flex items-center justify-between gap-4">
-            <span>Chapter progress</span>
-            <span ref={chapterLabelRef}>Section 1 · 0%</span>
+        {showChapterProgress && (
+          <div
+            data-testid="chapter-progress-status"
+            className="mb-3 px-1 text-xs text-base-content/55"
+          >
+            <div className="mb-1 flex items-center justify-between gap-4">
+              <span>Chapter progress</span>
+              <span ref={chapterLabelRef}>Section 1 · 0%</span>
+            </div>
+            <div className="h-1 overflow-hidden rounded-full bg-base-300/70">
+              <div
+                ref={chapterProgressRef}
+                data-testid="chapter-progress"
+                className="h-full w-0 bg-primary/55 transition-[width] duration-200 ease-linear motion-reduce:transition-none"
+              />
+            </div>
           </div>
-          <div className="h-1 overflow-hidden rounded-full bg-base-300/70">
-            <div
-              ref={chapterProgressRef}
-              data-testid="chapter-progress"
-              className="h-full w-0 bg-primary/55 transition-[width] duration-200 ease-linear motion-reduce:transition-none"
-            />
-          </div>
-        </div>
+        )}
 
         <div className="rounded-xl bg-card text-card-foreground shadow-2xl">
           <div data-testid="word-viewport" className="relative overflow-hidden">

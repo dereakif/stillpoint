@@ -1,3 +1,5 @@
+import { clampReadingWpm } from '../readingSpeed';
+
 const DATABASE_NAME = 'stillpoint-library';
 const DATABASE_VERSION = 1;
 const DOCUMENT_STORE = 'documents';
@@ -149,7 +151,7 @@ export const normalizeDocumentRecord = (record) => {
     ...savedSession,
     position: savedSession.position ?? record.readingPosition ?? null,
     completedChapterIds,
-    wpm: Number.isFinite(wpm) ? Math.max(100, Math.min(800, wpm)) : 300,
+    wpm: clampReadingWpm(wpm),
     navigationScrollY:
       Number.isFinite(navigationScrollY) && navigationScrollY > 0
         ? navigationScrollY
