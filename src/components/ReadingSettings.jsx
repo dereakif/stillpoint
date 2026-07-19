@@ -71,8 +71,15 @@ const TimingPreview = ({ settings, previewId }) => {
   );
 };
 
-const ReadingSettings = ({ settings, onApply, onClose, onRecalibrate }) => {
+const ReadingSettings = ({
+  settings,
+  navigationSettings,
+  onApply,
+  onClose,
+  onRecalibrate,
+}) => {
   const [draft, setDraft] = useState(settings);
+  const [navigationDraft, setNavigationDraft] = useState(navigationSettings);
   const [preview, setPreview] = useState(null);
   const [previewId, setPreviewId] = useState(0);
   const dialogRef = useRef(null);
@@ -336,6 +343,88 @@ const ReadingSettings = ({ settings, onApply, onClose, onRecalibrate }) => {
             </details>
           </section>
 
+          <section
+            aria-labelledby="navigation-behavior-title"
+            className="space-y-4"
+          >
+            <div>
+              <h3 id="navigation-behavior-title" className="font-medium">
+                Navigation and resume
+              </h3>
+              <p className="text-sm text-base-content/60">
+                Choose what Stillpoint remembers when moving between the
+                document and immersive reading.
+              </p>
+            </div>
+
+            <div className="divide-y divide-base-300 rounded-xl border border-base-300">
+              {[
+                [
+                  'centerTokenOnExit',
+                  'Center the current word after exit',
+                  'Bring the exact return position near the middle of the screen.',
+                ],
+                [
+                  'autoResumeOnOpen',
+                  'Resume immersively when opening a document',
+                  'Open saved documents directly in immersive reading mode.',
+                ],
+                [
+                  'rememberScrollPosition',
+                  'Remember document scroll position',
+                  'Return to the same navigation-mode scroll position later.',
+                ],
+              ].map(([property, label, description]) => (
+                <label
+                  key={property}
+                  className="flex cursor-pointer items-center justify-between gap-4 px-4 py-3"
+                >
+                  <span>
+                    <span className="block text-sm">{label}</span>
+                    <span className="block text-xs text-base-content/55">
+                      {description}
+                    </span>
+                  </span>
+                  <input
+                    type="checkbox"
+                    className="toggle toggle-primary shrink-0"
+                    aria-label={label}
+                    checked={navigationDraft[property]}
+                    onChange={(event) =>
+                      setNavigationDraft((current) => ({
+                        ...current,
+                        [property]: event.target.checked,
+                      }))
+                    }
+                  />
+                </label>
+              ))}
+
+              <label className="flex cursor-pointer items-center justify-between gap-4 px-4 py-3">
+                <span>
+                  <span className="block text-sm">
+                    Show immersive-entry hint
+                  </span>
+                  <span className="block text-xs text-base-content/55">
+                    Turning this off remembers that the hint was dismissed.
+                  </span>
+                </span>
+                <input
+                  type="checkbox"
+                  className="toggle toggle-primary shrink-0"
+                  aria-label="Show immersive-entry hint"
+                  checked={!navigationDraft.entryHintDismissed}
+                  onChange={(event) =>
+                    setNavigationDraft((current) => ({
+                      ...current,
+                      entryHintDismissed: !event.target.checked,
+                    }))
+                  }
+                />
+              </label>
+            </div>
+          </section>
+
           <section aria-labelledby="timing-preview-title" className="space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
@@ -396,7 +485,7 @@ const ReadingSettings = ({ settings, onApply, onClose, onRecalibrate }) => {
           <button
             type="button"
             className="btn btn-primary"
-            onClick={() => onApply(draft)}
+            onClick={() => onApply(draft, navigationDraft)}
           >
             Apply settings
           </button>

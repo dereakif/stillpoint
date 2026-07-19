@@ -377,11 +377,11 @@ Remember documents, positions, and preferences across sessions.
 
 ## Navigation settings
 
-- [ ] Add table-of-contents visibility preference.
-- [ ] Add **Keep current token centered after exit**.
-- [ ] Add **Remember that I dismissed the immersive-entry hint**.
-- [ ] Add **Resume automatically when opening a document**.
-- [ ] Add **Remember document scroll position**.
+- [x] Keep the table of contents consistently available in document view.
+- [x] Add **Keep current token centered after exit**.
+- [x] Add **Remember that I dismissed the immersive-entry hint**.
+- [x] Add **Resume automatically when opening a document**.
+- [x] Add **Remember document scroll position**.
 
 ## Clipboard and error feedback
 

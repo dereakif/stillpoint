@@ -37,6 +37,10 @@ import {
   loadAppearanceSettings,
   saveAppearanceSettings,
 } from './storage/appearanceSettings';
+import {
+  loadNavigationSettings,
+  saveNavigationSettings,
+} from './storage/navigationSettings';
 
 const MODE_TRANSITION_DURATION = 800;
 const SESSION_WRITE_DEBOUNCE = 1500;
@@ -114,6 +118,9 @@ function App() {
     return loadedSettings;
   });
   const [wpm, setWpm] = useState(() => readingSettings.wpm);
+  const [navigationSettings, setNavigationSettings] = useState(
+    loadNavigationSettings
+  );
   const [navigationScrollY, setNavigationScrollY] = useState(0);
   const [returnContext, setReturnContext] = useState(null);
   const [readingSessionId, setReadingSessionId] = useState(0);
@@ -148,7 +155,9 @@ function App() {
       position: readingPosition,
       completedChapterIds,
       wpm,
-      navigationScrollY,
+      navigationScrollY: navigationSettings.rememberScrollPosition
+        ? navigationScrollY
+        : 0,
     }
   ) => {
     if (!documentModel.source.text.trim()) return null;
@@ -208,14 +217,23 @@ function App() {
         position: readingPosition,
         completedChapterIds,
         wpm,
-        navigationScrollY,
+        navigationScrollY: navigationSettings.rememberScrollPosition
+          ? navigationScrollY
+          : 0,
       });
     }, SESSION_WRITE_DEBOUNCE);
 
     return () => window.clearTimeout(sessionWriteTimerRef.current);
     // Persist a quiet snapshot rather than writing on every displayed word.
     // oxlint-disable-next-line react-hooks/exhaustive-deps
-  }, [document, readingPosition, completedChapterIds, wpm, navigationScrollY]);
+  }, [
+    document,
+    readingPosition,
+    completedChapterIds,
+    wpm,
+    navigationScrollY,
+    navigationSettings.rememberScrollPosition,
+  ]);
 
   const updateCalibrationProfile = (profile) => {
     const savedProfile = saveCalibrationProfile(profile);
@@ -236,16 +254,28 @@ function App() {
     setIsAppearanceSettingsOpen(false);
   };
 
-  const applyReadingSettings = (nextSettings) => {
+  const applyReadingSettings = (nextSettings, nextNavigationSettings) => {
     const savedSettings = saveReadingSettings(nextSettings);
+    const savedNavigationSettings = saveNavigationSettings(
+      nextNavigationSettings ?? navigationSettings
+    );
+    const savedScrollY = savedNavigationSettings.rememberScrollPosition
+      ? navigationScrollY
+      : 0;
+
     setReadingSettings(savedSettings);
+    setNavigationSettings(savedNavigationSettings);
     setWpm(savedSettings.wpm);
+    setNavigationScrollY(savedScrollY);
+    if (!savedNavigationSettings.entryHintDismissed) {
+      setHasStartedImmersive(false);
+    }
     setIsReadingSettingsOpen(false);
     persistDocument(document, {
       position: readingPosition,
       completedChapterIds,
       wpm: savedSettings.wpm,
-      navigationScrollY,
+      navigationScrollY: savedScrollY,
     });
   };
 
@@ -320,13 +350,22 @@ function App() {
     });
   };
 
+  const dismissEntryHint = () => {
+    setHasStartedImmersive(true);
+    setNavigationSettings((current) =>
+      current.entryHintDismissed
+        ? current
+        : saveNavigationSettings({ ...current, entryHintDismissed: true })
+    );
+  };
+
   const startReading = (position = readingPosition) => {
     if (!text.trim()) return;
     window.clearTimeout(exitTimerRef.current);
     isExitingRef.current = false;
     if (position) setReadingPosition(position);
     setReturnContext(null);
-    setHasStartedImmersive(true);
+    dismissEntryHint();
     setReadingSessionId((sessionId) => sessionId + 1);
     setMode('immersive');
   };
@@ -343,7 +382,9 @@ function App() {
         position,
         completedChapterIds,
         wpm,
-        navigationScrollY,
+        navigationScrollY: navigationSettings.rememberScrollPosition
+          ? navigationScrollY
+          : 0,
       });
     }
 
@@ -381,17 +422,20 @@ function App() {
     const restoredWpm = Number.isFinite(savedSession.wpm)
       ? savedSession.wpm
       : 300;
-    const restoredScrollY = Number.isFinite(savedSession.navigationScrollY)
-      ? Math.max(0, savedSession.navigationScrollY)
-      : 0;
+    const restoredScrollY =
+      navigationSettings.rememberScrollPosition &&
+      Number.isFinite(savedSession.navigationScrollY)
+        ? Math.max(0, savedSession.navigationScrollY)
+        : 0;
+    const shouldAutoResume =
+      navigationSettings.autoResumeOnOpen && openedDocument.tokens.length > 0;
 
-    if (restoredScrollY > 0) {
-      window.history.replaceState(
-        null,
-        '',
-        `${window.location.pathname}${window.location.search}`
-      );
-    }
+    window.history.replaceState(
+      null,
+      '',
+      `${window.location.pathname}${window.location.search}`
+    );
+    if (restoredScrollY === 0) window.scrollTo(0, 0);
 
     setDocument(openedDocument);
     setReadingPosition(restoredPosition);
@@ -399,7 +443,13 @@ function App() {
     updateReadingWpm(restoredWpm);
     setNavigationScrollY(restoredScrollY);
     setReturnContext(null);
-    setMode('document');
+    if (shouldAutoResume) {
+      dismissEntryHint();
+      setReadingSessionId((sessionId) => sessionId + 1);
+      setMode('immersive');
+    } else {
+      setMode('document');
+    }
     await persistDocument(openedDocument, {
       position: restoredPosition,
       completedChapterIds: restoredCompletedChapterIds,
@@ -425,7 +475,9 @@ function App() {
       position: readingPosition,
       completedChapterIds,
       wpm,
-      navigationScrollY,
+      navigationScrollY: navigationSettings.rememberScrollPosition
+        ? navigationScrollY
+        : 0,
     });
     setMode('library');
   };
@@ -511,7 +563,11 @@ function App() {
           readingPosition={readingPosition}
           returnContext={returnContext}
           isImmersive={mode === 'immersive'}
-          showEntryHint={!hasStartedImmersive}
+          showEntryHint={
+            !hasStartedImmersive && !navigationSettings.entryHintDismissed
+          }
+          navigationSettings={navigationSettings}
+          onDismissEntryHint={dismissEntryHint}
           chapterCompletionBehavior={chapterCompletionBehavior}
           onChapterCompletionBehaviorChange={updateChapterCompletionBehavior}
           calibrationOffer={
@@ -552,6 +608,7 @@ function App() {
       {isReadingSettingsOpen && (
         <ReadingSettings
           settings={{ ...readingSettings, wpm }}
+          navigationSettings={navigationSettings}
           onApply={applyReadingSettings}
           onClose={() => setIsReadingSettingsOpen(false)}
           onRecalibrate={() => {

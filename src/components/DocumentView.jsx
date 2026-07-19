@@ -36,6 +36,8 @@ const DocumentView = ({
   returnContext,
   isImmersive = false,
   showEntryHint = false,
+  navigationSettings = {},
+  onDismissEntryHint,
   chapterCompletionBehavior = 'ask',
   onChapterCompletionBehaviorChange,
   calibrationOffer = null,
@@ -56,6 +58,10 @@ const DocumentView = ({
   const paragraphs = documentModel.sections.flatMap(
     (section) => section.blocks
   );
+
+  const centerTokenOnExit = navigationSettings.centerTokenOnExit ?? true;
+  const rememberScrollPosition =
+    navigationSettings.rememberScrollPosition ?? true;
   const documentWidthClass =
     DOCUMENT_WIDTH_CLASSES[appearanceSettings.documentWidth] ??
     DOCUMENT_WIDTH_CLASSES.comfortable;
@@ -97,7 +103,9 @@ const DocumentView = ({
   });
   const contentsButtonRef = useRef(null);
   const drawerCloseButtonRef = useRef(null);
-  const isRestoringScrollRef = useRef(navigationScrollY > 0);
+  const isRestoringScrollRef = useRef(
+    rememberScrollPosition && navigationScrollY > 0
+  );
 
   useEffect(() => {
     if (!showEntryHint) {
@@ -128,7 +136,10 @@ const DocumentView = ({
     );
     const returnTarget = currentToken ?? currentParagraph;
 
-    returnTarget?.scrollIntoView({ block: 'center', behavior: 'instant' });
+    returnTarget?.scrollIntoView({
+      block: centerTokenOnExit ? 'center' : 'nearest',
+      behavior: 'instant',
+    });
     returnTarget?.focus({ preventScroll: true });
     setShowReturnHighlight(true);
 
@@ -137,7 +148,7 @@ const DocumentView = ({
     }, RETURN_HIGHLIGHT_DURATION);
 
     return () => window.clearTimeout(highlightTimer);
-  }, [returnContext]);
+  }, [returnContext, centerTokenOnExit]);
 
   useEffect(() => {
     if (readingSection) setActiveSectionId(readingSection.id);
@@ -172,7 +183,7 @@ const DocumentView = ({
     };
 
     const handleScroll = () => {
-      if (!isRestoringScrollRef.current) {
+      if (rememberScrollPosition && !isRestoringScrollRef.current) {
         onNavigationScrollChange?.(window.scrollY);
       }
       if (animationFrame !== null) return;
@@ -186,7 +197,12 @@ const DocumentView = ({
       window.removeEventListener('scroll', handleScroll);
       window.cancelAnimationFrame(animationFrame);
     };
-  }, [documentModel, isImmersive, onNavigationScrollChange]);
+  }, [
+    documentModel,
+    isImmersive,
+    onNavigationScrollChange,
+    rememberScrollPosition,
+  ]);
 
   useEffect(() => {
     const requestedSectionId = decodeURIComponent(
@@ -195,7 +211,12 @@ const DocumentView = ({
     const requestedSection = documentModel.sections.find(
       (section) => section.id === requestedSectionId
     );
-    if (!requestedSection || navigationScrollY > 0) return undefined;
+    if (
+      !requestedSection ||
+      (rememberScrollPosition && navigationScrollY > 0)
+    ) {
+      return undefined;
+    }
 
     setActiveSectionId(requestedSection.id);
     const navigationFrame = window.requestAnimationFrame(() => {
@@ -205,9 +226,18 @@ const DocumentView = ({
     });
 
     return () => window.cancelAnimationFrame(navigationFrame);
-  }, [documentModel, navigationScrollY]);
+  }, [documentModel, navigationScrollY, rememberScrollPosition]);
 
   useEffect(() => {
+    if (!rememberScrollPosition) {
+      isRestoringScrollRef.current = true;
+      const resetFrame = window.requestAnimationFrame(() => {
+        window.scrollTo(0, 0);
+        isRestoringScrollRef.current = false;
+      });
+      return () => window.cancelAnimationFrame(resetFrame);
+    }
+
     if (navigationScrollY <= 0) {
       isRestoringScrollRef.current = false;
       return undefined;
@@ -227,7 +257,7 @@ const DocumentView = ({
     };
     // Scroll is restored once when this document view is opened.
     // oxlint-disable-next-line react-hooks/exhaustive-deps
-  }, [documentModel.id]);
+  }, [documentModel.id, rememberScrollPosition]);
 
   useEffect(() => {
     if (!activeSectionId) return;
@@ -707,11 +737,18 @@ const DocumentView = ({
         {showEntryHint && (
           <div
             data-testid="immersive-entry-hint"
-            className={`border-b border-base-300/60 px-4 py-1.5 text-center text-xs text-base-content transition-opacity duration-700 motion-reduce:transition-none ${
+            className={`flex items-center justify-center gap-2 border-b border-base-300/60 px-4 py-1.5 text-center text-xs text-base-content transition-opacity duration-700 motion-reduce:transition-none ${
               isEntryHintDimmed ? 'opacity-45' : 'opacity-80'
             }`}
           >
             <p>Click any word, heading, or paragraph to Immerse</p>
+            <button
+              type="button"
+              className="btn btn-ghost btn-xs"
+              onClick={onDismissEntryHint}
+            >
+              Got it
+            </button>
             <span className="sr-only">
               Keyboard users can focus the current word, use the left and right
               arrow keys to choose another word, then press Enter or Space.
