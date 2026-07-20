@@ -32,7 +32,7 @@ Prepare the current application for shared position state and larger product fea
 - [x] Define what happens when Play is pressed after reaching the end of a document.
 - [x] Add explicit `restart` or `reset` behavior to the RSVP engine.
 - [x] Define one consistent meaning for progress values.
-- [x] Make preview, playback, rewind, and forward use the same progress calculation.
+- [x] Make preview, playback, and navigation use the same progress calculation.
 - [x] Make navigation commands safe when the document contains no tokens.
 - [x] Decide whether pause/resume redisplays the current word or resumes its remaining duration.
 - [x] Decide how a WPM change affects the currently displayed word.
@@ -143,7 +143,7 @@ Suggested initial shape:
 
 - [x] A reader can start immersive playback from a chosen paragraph.
 - [x] Exiting returns to the correct document location.
-- [x] Position remains synchronized after rewind, forward, pause, and resume.
+- [x] Position remains synchronized after sentence navigation, pause, and resume.
 - [x] The transition works with normal and reduced motion.
 - [x] Navigation mode is usable without a mouse.
 
@@ -271,7 +271,7 @@ Navigation mode should support scrolling, skimming, searching, and choosing wher
 - [x] Mark chapter boundaries in the reading-position model.
 - [x] Detect when immersive playback reaches the end of a chapter.
 - [x] Prevent chapter-boundary prompts from being triggered more than once.
-- [x] Keep rewind and forward behavior correct across chapter boundaries.
+- [x] Keep direct navigation correct across chapter boundaries.
 - [x] Show the next chapter title before continuing.
 - [x] Calculate chapter and document progress separately.
 
@@ -357,7 +357,7 @@ Remember documents, positions, and preferences across sessions.
 - [x] Add pacing presets: Smooth, Natural, and Deliberate.
 - [x] Add WPM control.
 - [x] Add countdown duration.
-- [x] Add rewind distance.
+- [x] Retire configurable word-rewind distance in favor of sentence navigation.
 - [x] Add punctuation-pause strength.
 - [x] Add long-word timing preference.
 - [x] Add function-word acceleration toggle.
@@ -414,12 +414,11 @@ Expand navigation, comprehension, and review without cluttering immersive mode.
 
 ## Semantic navigation
 
-- [ ] Add previous-sentence navigation.
-- [ ] Add next-sentence navigation.
-- [ ] Add previous-paragraph navigation.
-- [ ] Add next-paragraph navigation.
-- [ ] Decide how navigation behaves while playback is active.
-- [ ] Add configurable keyboard shortcuts.
+- [x] Add previous-sentence navigation.
+- [x] Add next-sentence navigation.
+- [x] Keep semantic navigation focused on sentences; defer paragraph navigation.
+- [x] Pause playback and hold on the destination after sentence navigation.
+- [x] Use direct left/right arrow bindings without configurable shortcuts for now.
 
 ## Search
 

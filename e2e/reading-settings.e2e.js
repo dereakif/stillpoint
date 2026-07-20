@@ -51,9 +51,6 @@ test('previews draft timing without applying canceled changes', async ({
   await dialog
     .getByRole('combobox', { name: 'Countdown duration' })
     .selectOption('1');
-  await dialog
-    .getByRole('combobox', { name: 'Rewind distance' })
-    .selectOption('7');
 
   await page.clock.install();
   await dialog.getByRole('button', { name: 'Preview timing' }).click();
@@ -75,9 +72,7 @@ test('previews draft timing without applying canceled changes', async ({
   ).toHaveValue('300');
 });
 
-test('applies and restores pacing, countdown, and rewind settings', async ({
-  page,
-}) => {
+test('applies and restores pacing and countdown settings', async ({ page }) => {
   await page.goto('/');
   await saveDocument(page);
   const dialog = await openSettings(page);
@@ -89,9 +84,6 @@ test('applies and restores pacing, countdown, and rewind settings', async ({
   await dialog
     .getByRole('combobox', { name: 'Countdown duration' })
     .selectOption('1');
-  await dialog
-    .getByRole('combobox', { name: 'Rewind distance' })
-    .selectOption('7');
   await dialog.getByRole('button', { name: 'Apply settings' }).click();
 
   await expect(
@@ -103,38 +95,6 @@ test('applies and restores pacing, countdown, and rewind settings', async ({
   await expect(page.getByTestId('immersive-countdown')).toHaveText('1');
   await page.clock.fastForward(1700);
   await page.getByRole('button', { name: 'Pause' }).click();
-  const words = [
-    'zero',
-    'one',
-    'two',
-    'three',
-    'four',
-    'five',
-    'six',
-    'seven',
-    'eight',
-    'nine',
-    'ten',
-    'eleven',
-    'twelve',
-  ];
-  const startingWord = await page.getByTestId('current-word').textContent();
-  const startingIndex = words.indexOf(startingWord);
-  const firstSkipIndex = Math.min(words.length - 1, startingIndex + 5);
-  const secondSkipIndex = Math.min(words.length - 1, firstSkipIndex + 5);
-  const rewindIndex = Math.max(0, secondSkipIndex - 7);
-
-  await page.getByRole('button', { name: 'Skip forward' }).click();
-  await expect(page.getByTestId('current-word')).toHaveText(
-    words[firstSkipIndex]
-  );
-  await page.getByRole('button', { name: 'Skip forward' }).click();
-  await expect(page.getByTestId('current-word')).toHaveText(
-    words[secondSkipIndex]
-  );
-  await page.getByRole('button', { name: 'Rewind' }).click();
-  await expect(page.getByTestId('current-word')).toHaveText(words[rewindIndex]);
-
   await page.keyboard.press('Escape');
   await page.clock.fastForward(1000);
   await page.getByRole('button', { name: 'Open library' }).click();
@@ -148,9 +108,6 @@ test('applies and restores pacing, countdown, and rewind settings', async ({
   await expect(
     restored.getByRole('combobox', { name: 'Countdown duration' })
   ).toHaveValue('1');
-  await expect(
-    restored.getByRole('combobox', { name: 'Rewind distance' })
-  ).toHaveValue('7');
 
   await restored.getByText('Fine-tune reading rhythm').click();
   await expect(

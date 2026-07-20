@@ -14,7 +14,6 @@ const DEFAULT_SETTINGS = {
   preset: 'natural',
   wpm: 300,
   countdownSeconds: 3,
-  rewindWords: 5,
   punctuationPause: 'normal',
   longWordTiming: 'balanced',
   accelerateFunctionWords: true,
@@ -54,8 +53,8 @@ describe('reading settings persistence', () => {
       ...DEFAULT_SETTINGS,
       wpm: 350,
       countdownSeconds: 4,
-      rewindWords: 9,
     });
+    expect(saved).not.toHaveProperty('rewindWords');
     expect(loadReadingSettings()).toEqual(saved);
     expect(
       JSON.parse(globalThis.localStorage.getItem(READING_SETTINGS_STORAGE_KEY))
@@ -79,7 +78,6 @@ describe('reading settings persistence', () => {
       preset: 'deliberate',
       wpm: 410,
       countdownSeconds: 2,
-      rewindWords: 7,
       ...PACING_PRESETS.deliberate,
     });
   });
@@ -99,7 +97,6 @@ describe('reading settings persistence', () => {
       ...DEFAULT_SETTINGS,
       wpm: 600,
       countdownSeconds: 5,
-      rewindWords: 1,
     });
 
     expect(saveReadingSettings({ wpm: 1, countdownSeconds: -2 })).toEqual({
@@ -173,7 +170,7 @@ describe('reading settings persistence', () => {
       },
     });
 
-    const saved = saveReadingSettings({ ...DEFAULT_SETTINGS, rewindWords: 12 });
+    const saved = saveReadingSettings({ ...DEFAULT_SETTINGS, wpm: 420 });
     expect(loadReadingSettings()).toEqual(saved);
   });
 });
@@ -210,7 +207,6 @@ describe('pacing presets', () => {
       preset: 'custom',
       wpm: 470,
       countdownSeconds: 5,
-      rewindWords: 14,
       punctuationPause: 'strong',
       longWordTiming: 'subtle',
       accelerateFunctionWords: false,
@@ -223,7 +219,6 @@ describe('pacing presets', () => {
       preset,
       wpm: 470,
       countdownSeconds: 5,
-      rewindWords: 14,
       ...timing,
     });
     expect(original.preset).toBe('custom');
@@ -240,7 +235,6 @@ describe('pacing presets', () => {
       preset: 'smooth',
       wpm: 350,
       countdownSeconds: 5,
-      rewindWords: 1,
       ...PACING_PRESETS.smooth,
     });
   });

@@ -458,7 +458,7 @@ describe('createRSVPPlayer', () => {
 
     player.subscribe('word', (token) => words.push(token.text));
     player.preview();
-    player.skipForward(1);
+    player.setPosition({ blockId: 'paragraph-2', tokenOffset: 0 });
 
     expect(words).toEqual(['Heading', 'Readable']);
     expect(player.getState().position).toEqual({
@@ -525,7 +525,7 @@ describe('createRSVPPlayer', () => {
     expect(player.getState().completedChapterIds).toEqual(['section-1']);
   });
 
-  test('does not prompt twice after rewinding across a completed boundary', async () => {
+  test('does not prompt twice after returning across a completed boundary', async () => {
     const document = createDocumentModel('# One\n\nalpha\n\n# Two\n\nbeta');
     const player = createRSVPPlayer(document, { baseWpm: 800 });
     let promptCount = 0;
@@ -538,7 +538,7 @@ describe('createRSVPPlayer', () => {
 
     player.play();
     await firstBoundary;
-    player.rewind(1);
+    player.setPosition({ blockId: 'paragraph-2', tokenOffset: 0 });
 
     const completed = new Promise((resolve) => {
       player.subscribe('complete', resolve);
@@ -569,7 +569,7 @@ describe('createRSVPPlayer', () => {
     });
   });
 
-  test('keeps direct navigation correct across chapter boundaries', async () => {
+  test('keeps direct positioning correct across chapter boundaries', async () => {
     const document = createDocumentModel('# One\n\nalpha\n\n# Two\n\nbeta');
     const player = createRSVPPlayer(document, { baseWpm: 800 });
     const boundaryReached = new Promise((resolve) => {
@@ -578,7 +578,7 @@ describe('createRSVPPlayer', () => {
 
     player.play();
     await boundaryReached;
-    player.skipForward(5);
+    player.setPosition({ blockId: 'paragraph-4', tokenOffset: 0 });
     expect(player.getState().position).toEqual({
       blockId: 'paragraph-4',
       tokenOffset: 0,
@@ -586,7 +586,7 @@ describe('createRSVPPlayer', () => {
     });
     expect(player.getPendingChapterBoundary()).toBeNull();
 
-    player.rewind(100);
+    player.setPosition({ blockId: 'paragraph-1', tokenOffset: 0 });
     expect(player.getState().position).toEqual({
       blockId: 'paragraph-1',
       tokenOffset: 0,
@@ -605,7 +605,7 @@ describe('createRSVPPlayer', () => {
       chapterProgress.push(chapter.progress)
     );
     player.preview();
-    player.skipForward(2);
+    player.setPosition({ blockId: 'paragraph-3', tokenOffset: 0 });
 
     expect(documentProgress).toEqual([1 / 4, 3 / 4]);
     expect(chapterProgress).toEqual([1 / 2, 1 / 2]);
@@ -698,44 +698,63 @@ describe('createRSVPPlayer', () => {
     player.pause();
   });
 
-  test('rewinds and skips within token boundaries', () => {
-    const player = createRSVPPlayer('alpha beta gamma delta');
-    const words = [];
-
-    player.subscribe('word', (token) => words.push(token.text));
-    player.preview();
-    player.skipForward(2);
-    player.rewind(1);
-    player.rewind(100);
-    player.skipForward(100);
-
-    expect(words).toEqual(['alpha', 'gamma', 'beta', 'alpha', 'delta']);
-  });
-
-  test('uses the configured default rewind distance', () => {
+  test('navigates by sentence and remains paused at each destination', () => {
     const player = createRSVPPlayer(
-      'zero one two three four five six seven eight nine ten',
-      { rewindWords: 7 }
+      'Alpha begins here. Beta continues here. Gamma finishes.'
     );
     const words = [];
 
     player.subscribe('word', (token) => words.push(token.text));
-    player.skipForward(10);
-    player.rewind();
+    player.preview();
+    player.nextSentence();
+    player.setPosition({ blockId: 'paragraph-1', tokenOffset: 5 });
+    player.previousSentence();
+    player.previousSentence();
+    player.previousSentence();
+    player.nextSentence();
+    player.nextSentence();
+    player.nextSentence();
 
-    expect(words).toEqual(['ten', 'three']);
+    expect(words).toEqual([
+      'Alpha',
+      'Beta',
+      'here.',
+      'Beta',
+      'Alpha',
+      'Alpha',
+      'Beta',
+      'Gamma',
+      'Gamma',
+    ]);
+    expect(player.isPlaying()).toBe(false);
   });
 
-  test('reports displayed-token progress consistently during navigation', () => {
-    const player = createRSVPPlayer('alpha beta gamma');
+  test('navigates backward from the final token after playback completes', async () => {
+    const player = createRSVPPlayer('Alpha ends. Beta finishes.', {
+      baseWpm: 800,
+    });
+    const completed = new Promise((resolve) =>
+      player.subscribe('complete', resolve)
+    );
+
+    player.play();
+    await completed;
+    player.previousSentence();
+
+    expect(player.getState().currentIndex).toBe(2);
+    expect(player.isPlaying()).toBe(false);
+  });
+
+  test('reports displayed-token progress consistently during sentence navigation', () => {
+    const player = createRSVPPlayer('Alpha ends. Beta ends.');
     const progress = [];
 
     player.subscribe('progress', (value) => progress.push(value));
     player.preview();
-    player.skipForward(2);
-    player.rewind(1);
+    player.nextSentence();
+    player.previousSentence();
 
-    expect(progress).toEqual([1 / 3, 1, 2 / 3]);
+    expect(progress).toEqual([1 / 4, 3 / 4, 1 / 4]);
   });
 
   test('starts at and reports shared reading positions', () => {
@@ -762,7 +781,7 @@ describe('createRSVPPlayer', () => {
     const words = [];
 
     player.subscribe('word', (token) => words.push(token.text));
-    player.skipForward(1);
+    player.setPosition({ blockId: 'paragraph-1', tokenOffset: 1 });
     player.reset();
     expect(player.isPlaying()).toBe(false);
     player.restart();
@@ -782,8 +801,8 @@ describe('createRSVPPlayer', () => {
 
     player.preview();
     player.play();
-    player.rewind();
-    player.skipForward();
+    player.previousSentence();
+    player.nextSentence();
     player.reset();
     player.restart();
 
@@ -796,6 +815,8 @@ describe('createRSVPPlayer', () => {
     const player = createRSVPPlayer('alpha beta', { baseWpm: 400 });
 
     expect(Object.isFrozen(player)).toBe(true);
+    expect(player.rewind).toBeUndefined();
+    expect(player.skipForward).toBeUndefined();
     expect(player.getState()).toEqual({
       isPlaying: false,
       wpm: 400,
@@ -806,7 +827,7 @@ describe('createRSVPPlayer', () => {
       completedChapterIds: [],
     });
 
-    player.skipForward(1);
+    player.setPosition({ blockId: 'paragraph-1', tokenOffset: 1 });
     expect(player.getState()).toEqual({
       isPlaying: false,
       wpm: 400,
@@ -869,9 +890,9 @@ describe('createRSVPPlayer', () => {
     player.preview();
     expect(unsubscribeFirst()).toBe(true);
     expect(unsubscribeFirst()).toBe(false);
-    player.skipForward(1);
+    player.setPosition({ blockId: 'paragraph-1', tokenOffset: 1 });
     unsubscribeSecond();
-    player.rewind(1);
+    player.setPosition({ blockId: 'paragraph-1', tokenOffset: 0 });
 
     expect(firstListenerWords).toEqual(['alpha']);
     expect(secondListenerWords).toEqual(['alpha', 'beta']);

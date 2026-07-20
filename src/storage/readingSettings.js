@@ -5,7 +5,7 @@ import {
   READING_WPM_STEP,
 } from '../readingSpeed';
 
-export const READING_SETTINGS_SCHEMA_VERSION = 1;
+export const READING_SETTINGS_SCHEMA_VERSION = 2;
 export const READING_SETTINGS_STORAGE_KEY = 'stillpoint.readingSettings';
 
 export const PACING_PRESETS = Object.freeze({
@@ -67,7 +67,6 @@ const DEFAULT_SETTINGS = Object.freeze({
   preset: 'natural',
   wpm: DEFAULT_READING_WPM,
   countdownSeconds: 3,
-  rewindWords: 5,
   ...PACING_PRESETS.natural,
 });
 
@@ -148,12 +147,7 @@ const normalizeSettings = (value) => {
       5,
       DEFAULT_SETTINGS.countdownSeconds
     ),
-    rewindWords: sanitizeInteger(
-      source.rewindWords,
-      1,
-      15,
-      DEFAULT_SETTINGS.rewindWords
-    ),
+
     punctuationPause,
     longWordTiming,
     accelerateFunctionWords,

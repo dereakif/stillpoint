@@ -171,48 +171,26 @@ const ReadingSettings = ({
               </span>
             </label>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <label className="form-control gap-2">
-                <span className="text-sm">Countdown before reading</span>
-                <select
-                  className="select w-full"
-                  aria-label="Countdown duration"
-                  value={draft.countdownSeconds}
-                  onChange={(event) =>
-                    updateDraft({
-                      countdownSeconds: Number(event.target.value),
-                    })
-                  }
-                >
-                  <option value="0">No countdown</option>
-                  {[1, 2, 3, 4, 5].map((seconds) => (
-                    <option key={seconds} value={seconds}>
-                      {seconds} {seconds === 1 ? 'second' : 'seconds'}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="form-control gap-2">
-                <span className="text-sm">Rewind distance</span>
-                <select
-                  className="select w-full"
-                  aria-label="Rewind distance"
-                  value={draft.rewindWords}
-                  onChange={(event) =>
-                    updateDraft({ rewindWords: Number(event.target.value) })
-                  }
-                >
-                  {Array.from({ length: 15 }, (_, index) => index + 1).map(
-                    (words) => (
-                      <option key={words} value={words}>
-                        {words} words
-                      </option>
-                    )
-                  )}
-                </select>
-              </label>
-            </div>
+            <label className="form-control max-w-sm gap-2">
+              <span className="text-sm">Countdown before reading</span>
+              <select
+                className="select w-full"
+                aria-label="Countdown duration"
+                value={draft.countdownSeconds}
+                onChange={(event) =>
+                  updateDraft({
+                    countdownSeconds: Number(event.target.value),
+                  })
+                }
+              >
+                <option value="0">No countdown</option>
+                {[1, 2, 3, 4, 5].map((seconds) => (
+                  <option key={seconds} value={seconds}>
+                    {seconds} {seconds === 1 ? 'second' : 'seconds'}
+                  </option>
+                ))}
+              </select>
+            </label>
           </section>
 
           <section aria-labelledby="reading-rhythm-title" className="space-y-4">

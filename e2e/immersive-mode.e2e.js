@@ -597,31 +597,31 @@ test('shows synchronized navigation progress and resume context', async ({
 }) => {
   await page.goto('/');
   await page.clock.install();
-  await openDocument(page, 'one two\n\nthree four five');
+  await openDocument(page, 'One two.\n\nThree four. Five six.');
 
   await expect(page.getByTestId('current-position-status')).toHaveText(
     'Paragraph 1 of 2 · Word 1 of 2'
   );
-  await expect(page.getByTestId('document-progress-value')).toHaveText('20%');
+  await expect(page.getByTestId('document-progress-value')).toHaveText('17%');
   await expect(
     page.getByRole('progressbar', { name: 'Document progress' })
-  ).toHaveAttribute('value', '20');
+  ).toHaveAttribute('value', '17');
   await expect(
-    page.getByRole('button', { name: /Resume reading Paragraph 1 · 20%/ })
+    page.getByRole('button', { name: /Resume reading Paragraph 1 · 17%/ })
   ).toBeVisible();
 
   await page.getByRole('button', { name: 'Immerse from paragraph 2' }).click();
   await page.clock.fastForward(3000);
   await expect(page.getByRole('button', { name: 'Play' })).toBeVisible();
-  await page.keyboard.press('ArrowRight');
+  await page.getByRole('button', { name: 'Next sentence' }).click();
   await page.keyboard.press('Escape');
 
   await expect(page.getByTestId('current-position-status')).toHaveText(
-    'Paragraph 2 of 2 · Word 3 of 3'
+    'Paragraph 2 of 2 · Word 3 of 4'
   );
-  await expect(page.getByTestId('document-progress-value')).toHaveText('100%');
+  await expect(page.getByTestId('document-progress-value')).toHaveText('83%');
   await expect(
-    page.getByRole('button', { name: /Resume reading Paragraph 2 · 100%/ })
+    page.getByRole('button', { name: /Resume reading Paragraph 2 · 83%/ })
   ).toBeVisible();
 });
 
@@ -764,23 +764,24 @@ test('shares reading position between document and immersive modes', async ({
 }) => {
   await page.goto('/');
   await page.clock.install();
-  await enterImmersiveMode(page, 'one two\n\nthree four five six');
+  await enterImmersiveMode(page, 'One two.\n\nThree four five six.');
   await page.clock.fastForward(3000);
+  await expect(page.getByRole('button', { name: 'Play' })).toBeVisible();
 
-  await page.keyboard.press('ArrowRight');
-  await expect(page.getByTestId('current-word')).toHaveText('six');
+  await page.getByRole('button', { name: 'Next sentence' }).click();
+  await expect(page.getByTestId('current-word')).toHaveText('Three');
   await page.keyboard.press('Escape');
 
   const currentParagraph = page.locator('p[aria-current="location"]');
   await expect(currentParagraph).toHaveAttribute('id', 'paragraph-2');
-  await expect(currentParagraph).toHaveAttribute('data-token-offset', '3');
+  await expect(currentParagraph).toHaveAttribute('data-token-offset', '0');
   await expect(currentParagraph).toHaveAttribute(
     'data-position-marker',
     'current-block'
   );
 
   const returnToken = page.getByTestId('return-word-highlight');
-  await expect(returnToken).toHaveText('six');
+  await expect(returnToken).toHaveText('Three');
   await expect(returnToken).toBeFocused();
   await expect(returnToken).toHaveAttribute(
     'data-highlight-kind',
@@ -797,7 +798,7 @@ test('shares reading position between document and immersive modes', async ({
   );
 
   await page.getByRole('button', { name: 'Resume reading' }).click();
-  await expect(page.getByTestId('current-word')).toHaveText('six');
+  await expect(page.getByTestId('current-word')).toHaveText('Three');
 });
 
 test('centers the exact return token while retaining its block marker', async ({
@@ -856,18 +857,70 @@ test('keeps an exact static return indication with reduced motion', async ({
   );
 });
 
+test('moves by sentence and pauses at each semantic destination', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await page.clock.install();
+  await openDocument(
+    page,
+    'Alpha starts. Beta continues here. Gamma finishes.'
+  );
+  await page
+    .locator('[data-block-id="paragraph-1"][data-token-offset="4"]')
+    .click();
+  await page.clock.fastForward(3700);
+
+  const currentWord = page.getByTestId('current-word');
+  await expect(currentWord).toHaveText('here.');
+  await page.getByRole('button', { name: 'Previous sentence' }).click();
+  await expect(currentWord).toHaveText('Beta');
+  await expect(page.getByRole('button', { name: 'Play' })).toBeVisible();
+
+  await page.getByRole('button', { name: 'Previous sentence' }).click();
+  await expect(currentWord).toHaveText('Alpha');
+  await page.getByRole('button', { name: 'Next sentence' }).click();
+  await expect(currentWord).toHaveText('Beta');
+  await expect(page.getByRole('button', { name: 'Play' })).toBeVisible();
+});
+
+test('ignores soft line wraps when navigating long sentences', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await page.clock.install();
+  await enterImmersiveMode(
+    page,
+    'Each section will be better understood and\nmake much more sense after reading the other sections. That could not\nbe helped.'
+  );
+  await page.clock.fastForward(3700);
+
+  const currentWord = page.getByTestId('current-word');
+  await expect(currentWord).toHaveText('Each');
+  await page.getByRole('button', { name: 'Next sentence' }).click();
+  await expect(currentWord).toHaveText('That');
+  await expect(page.getByRole('button', { name: 'Play' })).toBeVisible();
+
+  await page.getByRole('button', { name: 'Next sentence' }).click();
+  await expect(currentWord).toHaveText('That');
+  await page.getByRole('button', { name: 'Previous sentence' }).click();
+  await expect(currentWord).toHaveText('Each');
+});
+
 test('supports immersive keyboard controls', async ({ page }) => {
   await page.goto('/');
   await page.clock.install();
-  await enterImmersiveMode(page, 'alpha beta gamma delta epsilon zeta');
+  await enterImmersiveMode(page, 'alpha beta. gamma delta. epsilon zeta.');
   await page.clock.fastForward(3700);
-  await expect(page.getByRole('button', { name: 'Pause' })).toBeVisible();
-  await page.keyboard.press('Space');
+  const pauseButton = page.getByRole('button', { name: 'Pause' });
+  await expect(pauseButton).toBeVisible();
+  await pauseButton.click();
+  await expect(page.getByRole('button', { name: 'Play' })).toBeFocused();
 
   const currentWord = page.getByTestId('current-word');
 
   await page.keyboard.press('ArrowRight');
-  await expect(currentWord).toHaveText('zeta');
+  await expect(currentWord).toHaveText('gamma');
 
   await page.keyboard.press('ArrowLeft');
   await expect(currentWord).toHaveText('alpha');

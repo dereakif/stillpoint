@@ -62,7 +62,6 @@ const RSVPReader = ({
       initialPosition: readingPosition,
       completedChapterIds,
       timingOptions: toEngineTimingOptions(readingSettings),
-      rewindWords: readingSettings?.rewindWords,
     });
   }
 
@@ -287,11 +286,11 @@ const RSVPReader = ({
       if (!engine || isExiting) return;
 
       const target = event.target;
-      const isFormControl =
+      const isInputControl =
         target instanceof HTMLInputElement ||
         target instanceof HTMLTextAreaElement ||
-        target instanceof HTMLSelectElement ||
-        target instanceof HTMLButtonElement;
+        target instanceof HTMLSelectElement;
+      const isButton = target instanceof HTMLButtonElement;
 
       if (event.key === 'Escape') {
         event.preventDefault();
@@ -303,7 +302,7 @@ const RSVPReader = ({
         return;
       }
 
-      if (!isReady || isFormControl) return;
+      if (!isReady || isInputControl) return;
 
       if (event.key === 'c' || event.key === 'C') {
         if (event.repeat || engine.isPlaying()) return;
@@ -316,6 +315,7 @@ const RSVPReader = ({
 
       switch (event.key) {
         case ' ':
+          if (isButton) return;
           event.preventDefault();
           engine.playToggle();
           break;
@@ -323,13 +323,13 @@ const RSVPReader = ({
         case 'ArrowLeft':
           event.preventDefault();
           setContextPeek(null);
-          engine.rewind();
+          engine.previousSentence();
           break;
 
         case 'ArrowRight':
           event.preventDefault();
           setContextPeek(null);
-          engine.skipForward();
+          engine.nextSentence();
           break;
 
         case 'ArrowUp':

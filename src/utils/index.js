@@ -1,4 +1,8 @@
 import { clampReadingWpm } from '../readingSpeed';
+import {
+  getSentenceNavigationTarget,
+  getSentenceTokenRanges,
+} from './sentenceContext';
 
 /**
  * @typedef {object} RSVPToken
@@ -628,8 +632,8 @@ export const computeWordDuration = (token, baseWpm, opts = {}) => {
 /**
  * Creates an RSVP player with a stable command, state, and event interface.
  *
- * @param {string | { tokens: RSVPToken[] }} content
- * @param {{ baseWpm?: number, initialPosition?: ReadingPosition | null, completedChapterIds?: string[], timingOptions?: object, rewindWords?: number }} [options]
+ * @param {string | { tokens: RSVPToken[], sections?: object[] }} content
+ * @param {{ baseWpm?: number, initialPosition?: ReadingPosition | null, completedChapterIds?: string[], timingOptions?: object }} [options]
  */
 export const createRSVPPlayer = (
   content,
@@ -638,7 +642,6 @@ export const createRSVPPlayer = (
     initialPosition = null,
     completedChapterIds = [],
     timingOptions = {},
-    rewindWords = 5,
   } = {}
 ) => {
   let tokens = typeof content === 'string' ? tokenize(content) : content.tokens;
@@ -654,6 +657,29 @@ export const createRSVPPlayer = (
             tokens.some((token) => token.sectionId === section.id)
           )
           .map((section) => ({ id: section.id, title: section.title }));
+  const createFallbackSentenceRanges = (currentTokens) => {
+    const ranges = [];
+    let startTokenIndex = 0;
+
+    currentTokens.forEach((token, tokenIndex) => {
+      if (
+        !token.isSentenceEnd &&
+        !token.isParagraphEnd &&
+        tokenIndex < currentTokens.length - 1
+      ) {
+        return;
+      }
+
+      ranges.push({ startTokenIndex, endTokenIndex: tokenIndex });
+      startTokenIndex = tokenIndex + 1;
+    });
+
+    return ranges;
+  };
+  let sentenceRanges =
+    typeof content === 'string'
+      ? createFallbackSentenceRanges(tokens)
+      : getSentenceTokenRanges(content);
   let pendingChapterBoundary = null;
   const completedChapters = new Set(completedChapterIds);
   const promptedChapterBoundaries = new Set();
@@ -841,6 +867,7 @@ export const createRSVPPlayer = (
     player.pause();
 
     tokens = tokenize(newText);
+    sentenceRanges = createFallbackSentenceRanges(tokens);
     chapterDefinitions = [];
     pendingChapterBoundary = null;
     promptedChapterBoundaries.clear();
@@ -853,6 +880,7 @@ export const createRSVPPlayer = (
     player.pause();
 
     tokens = documentModel.tokens;
+    sentenceRanges = getSentenceTokenRanges(documentModel);
     chapterDefinitions = documentModel.sections
       .filter((section) =>
         tokens.some((token) => token.sectionId === section.id)
@@ -929,8 +957,25 @@ export const createRSVPPlayer = (
     player.play();
   };
 
-  player.rewind = (n = rewindWords) => jumpTo(index - n);
-  player.skipForward = (n = 5) => jumpTo(index + n);
+  const getCurrentTokenIndex = () =>
+    tokens.length ? Math.min(index, tokens.length - 1) : index;
+
+  player.previousSentence = () =>
+    jumpTo(
+      getSentenceNavigationTarget(
+        sentenceRanges,
+        getCurrentTokenIndex(),
+        'previous'
+      )
+    );
+  player.nextSentence = () =>
+    jumpTo(
+      getSentenceNavigationTarget(
+        sentenceRanges,
+        getCurrentTokenIndex(),
+        'next'
+      )
+    );
 
   player.isPlaying = () => playing;
 

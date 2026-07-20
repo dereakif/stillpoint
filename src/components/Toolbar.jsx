@@ -1,4 +1,4 @@
-import { BookOpen, FastForward, Pause, Play, Rewind } from 'lucide-react';
+import { BookOpen, Pause, Play, SkipBack, SkipForward } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import {
   MAX_READING_WPM,
@@ -39,10 +39,10 @@ const Toolbar = ({ engineRef, isContextVisible, onContextToggle }) => {
           <button
             type="button"
             className="btn btn-soft"
-            onClick={() => engineRef.current.rewind()}
-            aria-label="Rewind"
+            onClick={() => engineRef.current.previousSentence()}
+            aria-label="Previous sentence"
           >
-            <Rewind />
+            <SkipBack />
           </button>
 
           <button
@@ -57,10 +57,10 @@ const Toolbar = ({ engineRef, isContextVisible, onContextToggle }) => {
           <button
             type="button"
             className="btn btn-soft"
-            onClick={() => engineRef.current.skipForward()}
-            aria-label="Skip forward"
+            onClick={() => engineRef.current.nextSentence()}
+            aria-label="Next sentence"
           >
-            <FastForward />
+            <SkipForward />
           </button>
 
           {!isPlaying && (
@@ -106,12 +106,12 @@ const KeyboardHints = ({ wpm, isPlaying }) => {
     <div className="pointer-events-none flex flex-wrap items-center justify-center gap-x-5 gap-y-2 rounded-xl border border-base-300 bg-base-100/80 px-4 py-3 text-xs text-base-content/60 shadow-sm backdrop-blur-md">
       <span className="flex items-center gap-2">
         <kbd className="kbd kbd-sm">←</kbd>
-        Rewind
+        Previous sentence
       </span>
 
       <span className="flex items-center gap-2">
         <kbd className="kbd kbd-sm">→</kbd>
-        Forward
+        Next sentence
       </span>
 
       <span className="flex items-center gap-2">

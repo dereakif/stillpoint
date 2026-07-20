@@ -10,13 +10,13 @@ The reader highlights each token's Optimal Recognition Point (ORP), adjusts timi
 - ORP highlighting and centered word alignment
 - Adjustable reading speed from 150 to 600 WPM
 - Timing adjustments for punctuation, paragraphs, and longer words
-- Rewind and skip-forward controls
+- Previous- and next-sentence navigation
 - Synchronized document progress and current-position context
 - Markdown sections with a live structure preview
 - Calm document workspace with responsive table-of-contents navigation
 - Browser-local document library with progress, rename, delete, and JSON backup
 - Keyboard shortcuts for playback and speed
-- Clipboard loading while in immersive mode
+- Validated clipboard import in the document editor
 - Responsive interface built with Tailwind CSS and DaisyUI
 
 ## Getting started
@@ -54,17 +54,17 @@ Open the local URL printed by Vite.
 
 ### Keyboard shortcuts
 
-| Key           | Action                                                        |
-| ------------- | ------------------------------------------------------------- |
-| `Space`       | Play or pause                                                 |
-| `Left Arrow`  | Rewind five tokens                                            |
-| `Right Arrow` | Skip forward five tokens                                      |
-| `Up Arrow`    | Increase speed by 10 WPM                                      |
-| `Down Arrow`  | Decrease speed by 10 WPM                                      |
-| `C`           | Replace the current text with clipboard contents and continue |
-| `Escape`      | Exit immersive mode                                           |
+| Key           | Action                                              |
+| ------------- | --------------------------------------------------- |
+| `Space`       | Play or pause                                       |
+| `Left Arrow`  | Move to the previous sentence and pause             |
+| `Right Arrow` | Move to the next sentence and pause                 |
+| `Up Arrow`    | Increase speed by 10 WPM                            |
+| `Down Arrow`  | Decrease speed by 10 WPM                            |
+| Hold `C`      | Show sentence context while paused                  |
+| `Escape`      | Close sentence context, then exit immersive mode    |
 
-Clipboard access depends on browser support, page security, and user permission. It generally works on `localhost` and secure HTTPS pages.
+The document editor can load validated clipboard text for review. Clipboard access depends on browser support, page security, and user permission; it generally works on `localhost` and secure HTTPS pages.
 
 ### Immersive entry semantics
 
@@ -102,7 +102,7 @@ Documents use stable document, section, block, and token IDs. Markdown headings 
 ### Commands and state
 
 - Playback: `play()`, `pause()`, `playToggle()`, `restart()`, and `reset()`
-- Navigation: `preview()`, `rewind(count)`, `skipForward(count)`, and `setPosition(position)`
+- Navigation: `preview()`, `previousSentence()`, `nextSentence()`, and `setPosition(position)`
 - Content and speed: `loadText(text)`, `loadDocument(document)`, `setWpm(wpm)`, and `getWpm()`
 - Chapters: `continueToNextChapter()`, `reviewCompletedChapter()`, `getChapterState()`, and `getPendingChapterBoundary()`
 - State: `isPlaying()` and `getState()`
@@ -121,7 +121,7 @@ Structured-document playback reports chapter and document progress separately. A
 - **Return to document** exits at the completed chapter's final displayed token.
 - **Review chapter** restarts the completed chapter from its first readable token with a fresh countdown.
 
-Direct rewind and forward navigation can cross boundaries without corrupting position or showing duplicate prompts.
+Direct sentence navigation pauses at the destination and can cross boundaries without corrupting position or showing duplicate prompts.
 
 ### Chapter completion behavior
 
