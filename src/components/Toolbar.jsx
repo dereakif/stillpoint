@@ -1,4 +1,4 @@
-import { FastForward, Pause, Play, Rewind } from 'lucide-react';
+import { BookOpen, FastForward, Pause, Play, Rewind } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import {
   MAX_READING_WPM,
@@ -6,7 +6,7 @@ import {
   READING_WPM_STEP,
 } from '../readingSpeed';
 
-const Toolbar = ({ engineRef }) => {
+const Toolbar = ({ engineRef, isContextVisible, onContextToggle }) => {
   const [wpm, setWpm] = useState(300);
   const [isPlaying, setIsPlaying] = useState(false);
 
@@ -62,6 +62,18 @@ const Toolbar = ({ engineRef }) => {
           >
             <FastForward />
           </button>
+
+          {!isPlaying && (
+            <button
+              type="button"
+              className={`btn btn-soft ${isContextVisible ? 'btn-primary' : ''}`}
+              aria-pressed={isContextVisible}
+              onClick={onContextToggle}
+            >
+              <BookOpen className="size-4" />
+              Context
+            </button>
+          )}
         </div>
 
         <div className="w-full max-w-xs">
@@ -84,12 +96,12 @@ const Toolbar = ({ engineRef }) => {
         </div>
       </div>
 
-      <KeyboardHints wpm={wpm} />
+      <KeyboardHints wpm={wpm} isPlaying={isPlaying} />
     </div>
   );
 };
 
-const KeyboardHints = ({ wpm }) => {
+const KeyboardHints = ({ wpm, isPlaying }) => {
   return (
     <div className="pointer-events-none flex flex-wrap items-center justify-center gap-x-5 gap-y-2 rounded-xl border border-base-300 bg-base-100/80 px-4 py-3 text-xs text-base-content/60 shadow-sm backdrop-blur-md">
       <span className="flex items-center gap-2">
@@ -116,6 +128,13 @@ const KeyboardHints = ({ wpm }) => {
         <kbd className="kbd kbd-sm">Esc</kbd>
         Exit
       </span>
+
+      {!isPlaying && (
+        <span className="flex items-center gap-2">
+          <kbd className="kbd kbd-sm">C</kbd>
+          Hold for context
+        </span>
+      )}
 
       <span className="font-mono text-base-content/80">{wpm} WPM</span>
     </div>

@@ -1,6 +1,8 @@
 import { useRef, useState, useEffect } from 'react';
 import { createRSVPPlayer } from '../utils';
+import { getSentenceContext } from '../utils/sentenceContext';
 import WordDisplay from './WordDisplay';
+import ContextPeek from './ContextPeek';
 import Toolbar from './Toolbar';
 import ChapterBoundary from './ChapterBoundary';
 import ChapterAutoContinue from './ChapterAutoContinue';
@@ -28,6 +30,7 @@ const RSVPReader = ({
   const playTimerRef = useRef(null);
   const entryFrameRef = useRef(null);
   const automaticContinueTimerRef = useRef(null);
+  const contextPeekRef = useRef(null);
   const readingActivityRef = useRef({
     wordsRead: 0,
     readingTimeMs: 0,
@@ -50,6 +53,8 @@ const RSVPReader = ({
   const [isEntered, setIsEntered] = useState(false);
   const [chapterBoundary, setChapterBoundary] = useState(null);
   const [automaticContinuation, setAutomaticContinuation] = useState(null);
+  const [contextPeek, setContextPeek] = useState(null);
+  contextPeekRef.current = contextPeek;
 
   if (engineRef.current === null) {
     engineRef.current = createRSVPPlayer(document, {
@@ -158,6 +163,7 @@ const RSVPReader = ({
   };
 
   const beginAutomaticContinuation = (boundary) => {
+    setContextPeek(null);
     clearAutomaticContinuation();
     let remaining = 3;
     setAutomaticContinuation({ boundary, countdown: remaining });
@@ -176,11 +182,39 @@ const RSVPReader = ({
     }, 1000);
   };
 
+  const createContextPeek = (interaction) => {
+    const engine = engineRef.current;
+    if (
+      !isReady ||
+      engine.isPlaying() ||
+      chapterBoundary ||
+      automaticContinuation ||
+      isExiting
+    ) {
+      return null;
+    }
+
+    const context = getSentenceContext(
+      document,
+      engine.getState().currentIndex
+    );
+    return context ? { ...context, interaction } : null;
+  };
+
+  const toggleContextPeek = () => {
+    setContextPeek((current) =>
+      current?.interaction === 'toggle' ? null : createContextPeek('toggle')
+    );
+  };
+
   useEffect(() => {
     const engine = engineRef.current;
     const unsubscribePosition = engine.subscribe(
       'positionChange',
-      onReadingPositionChange
+      (position) => {
+        setContextPeek(null);
+        onReadingPositionChange(position);
+      }
     );
     const unsubscribeWpm = onWpmChange
       ? engine.subscribe('wpmChange', onWpmChange)
@@ -192,6 +226,7 @@ const RSVPReader = ({
       'playStateChange',
       (isPlaying) => {
         const activity = readingActivityRef.current;
+        if (isPlaying) setContextPeek(null);
         if (isPlaying && activity.startedAt === null) {
           activity.startedAt = performance.now();
         } else if (!isPlaying && activity.startedAt !== null) {
@@ -203,6 +238,7 @@ const RSVPReader = ({
     const unsubscribeChapterComplete = engine.subscribe(
       'chapterComplete',
       (boundary) => {
+        setContextPeek(null);
         onChapterCompleteRef.current?.(boundary.completedChapter.id);
         if (chapterCompletionBehaviorRef.current === 'continue') {
           beginAutomaticContinuation(boundary);
@@ -259,11 +295,24 @@ const RSVPReader = ({
 
       if (event.key === 'Escape') {
         event.preventDefault();
-        exitImmersiveMode();
+        if (contextPeekRef.current) {
+          setContextPeek(null);
+        } else {
+          exitImmersiveMode();
+        }
         return;
       }
 
       if (!isReady || isFormControl) return;
+
+      if (event.key === 'c' || event.key === 'C') {
+        if (event.repeat || engine.isPlaying()) return;
+        event.preventDefault();
+        if (contextPeekRef.current?.interaction !== 'toggle') {
+          setContextPeek(createContextPeek('hold'));
+        }
+        return;
+      }
 
       switch (event.key) {
         case ' ':
@@ -273,11 +322,13 @@ const RSVPReader = ({
 
         case 'ArrowLeft':
           event.preventDefault();
+          setContextPeek(null);
           engine.rewind();
           break;
 
         case 'ArrowRight':
           event.preventDefault();
+          setContextPeek(null);
           engine.skipForward();
           break;
 
@@ -296,10 +347,34 @@ const RSVPReader = ({
       }
     };
 
+    const handleKeyUp = (event) => {
+      if (event.key !== 'c' && event.key !== 'C') return;
+      setContextPeek((current) =>
+        current?.interaction === 'hold' ? null : current
+      );
+    };
+
+    const closeContextPeek = () => setContextPeek(null);
+    const handleVisibilityChange = () => {
+      if (window.document.visibilityState === 'hidden') closeContextPeek();
+    };
+
     window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    window.addEventListener('blur', closeContextPeek);
+    window.document.addEventListener(
+      'visibilitychange',
+      handleVisibilityChange
+    );
 
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+      window.removeEventListener('blur', closeContextPeek);
+      window.document.removeEventListener(
+        'visibilitychange',
+        handleVisibilityChange
+      );
     };
     // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [isReady, isExiting, onExit]);
@@ -326,6 +401,8 @@ const RSVPReader = ({
       >
         Exit
       </button>
+
+      {contextPeek && <ContextPeek context={contextPeek} />}
 
       <div
         data-testid="immersive-content"
@@ -388,7 +465,11 @@ const RSVPReader = ({
       )}
 
       {isReady && !chapterBoundary && !automaticContinuation && (
-        <Toolbar engineRef={engineRef} />
+        <Toolbar
+          engineRef={engineRef}
+          isContextVisible={Boolean(contextPeek)}
+          onContextToggle={toggleContextPeek}
+        />
       )}
     </section>
   );

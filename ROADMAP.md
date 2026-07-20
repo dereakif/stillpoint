@@ -392,10 +392,10 @@ Remember documents, positions, and preferences across sessions.
 
 ## Completion criteria
 
-- [ ] Documents and reading positions survive page reloads.
+- [x] Documents and reading positions survive page reloads.
 - [x] Settings are restored consistently.
 - [x] Stored data has a versioned schema and recovery behavior.
-- [ ] Readers can export or remove their local data.
+- [x] Readers can export or remove their local data.
 - [x] Readers can calibrate, override, and later revisit their recommended reading pace.
 
 ---
@@ -406,11 +406,11 @@ Expand navigation, comprehension, and review without cluttering immersive mode.
 
 ## Context peek
 
-- [ ] Design a temporary sentence-context overlay while immersive playback is paused.
-- [ ] Keep the current word highlighted within the sentence.
-- [ ] Support a press-and-hold keyboard interaction.
-- [ ] Support an accessible on-screen equivalent.
-- [ ] Return to fixed-ORP mode without moving the reading position.
+- [x] Design a temporary sentence-context overlay while immersive playback is paused.
+- [x] Keep the current word highlighted within the sentence.
+- [x] Support a press-and-hold keyboard interaction.
+- [x] Support an accessible on-screen equivalent.
+- [x] Return to fixed-ORP mode without moving the reading position.
 
 ## Semantic navigation
 

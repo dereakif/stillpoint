@@ -885,6 +885,71 @@ test('supports immersive keyboard controls', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Play' })).toBeVisible();
 });
 
+test('peeks at sentence context while paused without moving the reading position', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await page.clock.install();
+  await openDocument(
+    page,
+    'Echo ends the first sentence. Echo stays highlighted in this sentence.'
+  );
+  await page
+    .locator('[data-block-id="paragraph-1"][data-token-offset="5"]')
+    .click();
+  await page.clock.fastForward(3700);
+
+  const currentWord = page.getByTestId('current-word');
+  await expect(currentWord).toHaveText('Echo');
+  await expect(page.getByRole('button', { name: 'Context' })).toHaveCount(0);
+  await page.keyboard.press('Space');
+
+  const contextButton = page.getByRole('button', { name: 'Context' });
+  await expect(contextButton).toBeVisible();
+  await contextButton.click();
+  const contextPeek = page.getByRole('region', { name: 'Sentence context' });
+  await expect(contextPeek).toContainText(
+    'Echo stays highlighted in this sentence.'
+  );
+  await expect(page.getByTestId('context-current-word')).toHaveText('Echo');
+  await expect(currentWord).toHaveText('Echo');
+
+  await page.getByRole('button', { name: 'Play' }).click();
+  await expect(contextPeek).toHaveCount(0);
+  await expect(currentWord).toHaveText('Echo');
+  await page.getByRole('button', { name: 'Pause' }).click();
+
+  const immersiveMode = page.getByRole('region', {
+    name: 'Immersive reading mode',
+  });
+  await immersiveMode.focus();
+  await page.keyboard.down('c');
+  await expect(contextPeek).toBeVisible();
+  await expect(contextPeek).toContainText('Release C to return');
+  await page.keyboard.up('c');
+  await expect(contextPeek).toHaveCount(0);
+  await expect(currentWord).toHaveText('Echo');
+});
+
+test('closes a toggled context peek before Escape exits immersive mode', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await page.clock.install();
+  await enterImmersiveMode(page, 'One complete sentence. Another follows.');
+  await page.clock.fastForward(3700);
+  await page.keyboard.press('Space');
+  await page.getByRole('button', { name: 'Context' }).click();
+
+  await page.keyboard.press('Escape');
+  await expect(
+    page.getByRole('region', { name: 'Sentence context' })
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole('region', { name: 'Immersive reading mode' })
+  ).toBeVisible();
+});
+
 test('disables immersive transitions when reduced motion is preferred', async ({
   page,
 }) => {
