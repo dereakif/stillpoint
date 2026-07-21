@@ -420,6 +420,26 @@ Expand navigation, comprehension, and review without cluttering immersive mode.
 - [x] Pause playback and hold on the destination after sentence navigation.
 - [x] Use direct left/right arrow bindings without configurable shortcuts for now.
 
+## Lightweight EPUB import — next priority
+
+Keep EPUB support focused on reflowable reading. PDF import, DRM support, exact visual reproduction, complex layouts, embedded fonts, and rich-media playback are intentionally out of scope.
+
+- [ ] Choose a lightweight browser ZIP dependency and use native XML/XHTML parsing rather than a full book renderer.
+- [ ] Accept local `.epub` files from the document import flow without uploading them.
+- [ ] Parse EPUB 2 and EPUB 3 container, package, manifest, spine, navigation-document, and legacy NCX data.
+- [ ] Preserve title, author, language, source filename, table of contents, chapters, and spine reading order.
+- [ ] Extract supported headings, paragraphs, lists, and quotes into Stillpoint’s existing structured document model.
+- [ ] Ignore scripts, styling, fonts, remote resources, and unsupported rich media instead of attempting visual reproduction.
+- [ ] Show a reviewable metadata, table-of-contents, chapter-structure, and text preview before saving.
+- [ ] Allow a chapter action in the table of contents to begin immersive reading at its first readable word.
+- [ ] Persist the imported book and exact reading position so reopening it resumes where the reader stopped.
+- [ ] Keep extraction on-device and prevent imported markup from executing or fetching remote resources.
+- [ ] Enforce archive file-size, extracted-size, entry-count, compression-ratio, and path-safety limits.
+- [ ] Detect malformed, unsupported, or encrypted EPUBs and provide concise actionable feedback.
+- [ ] Preserve useful EPUB metadata in library records and JSON exports without storing unnecessary archive resources.
+- [ ] Add generated parser fixtures for valid EPUB 2/3, legacy NCX, missing metadata, malformed packages, encrypted content, and unsafe archives.
+- [ ] Add browser tests for import, preview, cancellation, chapter entry, library persistence, and exact-position resume.
+
 ## Search
 
 - [ ] Add full-document search in navigation mode.
@@ -447,27 +467,13 @@ Expand navigation, comprehension, and review without cluttering immersive mode.
 - [ ] Show an optional, understated session summary after exit.
 - [ ] Avoid manipulative streaks or forced gamification.
 
-## PDF and EPUB ingestion
-
-- [ ] Support local EPUB upload and preserve its title, author, table of contents, chapters, and reading order.
-- [ ] Support local PDF upload with clear expectations about text-extraction and layout limitations.
-- [ ] Keep local file extraction on-device where practical.
-- [ ] Detect image-only PDFs and explain when OCR would be required rather than silently importing an empty document.
-- [ ] Reconstruct PDF reading order conservatively and flag uncertain multi-column or complex layouts.
-- [ ] Detect recurring PDF headers, footers, page numbers, and line-end hyphenation without silently deleting uncertain text.
-- [ ] Preserve chapter structure where the source format provides it.
-- [ ] Show a reviewable structure and text preview before saving any imported file.
-- [ ] Show import warnings when structure, reading order, or text quality is uncertain.
-- [ ] Preserve source filename and relevant publication metadata.
-- [ ] Treat archives, embedded resources, files, and metadata as untrusted input and enforce size/resource limits.
-- [ ] Add parser fixtures and tests for valid, malformed, encrypted, image-only, and unusually large files.
-
 ## Completion criteria
 
-- [ ] Readers can recover context without abandoning their position.
+- [x] Readers can recover context without abandoning their position.
+- [ ] Readers can import an EPUB, review its structure, choose a chapter, and read it immersively.
+- [ ] Imported EPUBs reopen at the exact saved position after a reload or later visit.
 - [ ] Search, bookmarks, and notes remain navigation-mode tools rather than immersive clutter.
-- [ ] PDF and EPUB imports produce a reviewable structured document before reading.
-- [ ] Imported files retain useful source metadata and fail with actionable feedback.
+- [ ] Imported EPUBs retain useful source metadata and fail with actionable feedback.
 
 ---
 
