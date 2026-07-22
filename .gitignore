@@ -13,6 +13,8 @@ dist-ssr
 playwright-report
 playwright/.cache
 test-results
+moby_dick_cut.epub
+moby_dick.epub
 *.local
 
 # Editor directories and files

@@ -1,4 +1,4 @@
-import { Download, FilePlus2, Pencil, Trash2 } from 'lucide-react';
+import { BookOpen, Download, FilePlus2, Pencil, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
 const downloadJson = (filename, value) => {
@@ -47,6 +47,10 @@ const DocumentLibrary = ({
             <h1 className="text-xl font-semibold tracking-tight">Library</h1>
           </div>
           <div className="flex flex-wrap gap-2">
+            <a href="/epub-viewer" className="btn btn-ghost btn-sm">
+              <BookOpen className="size-4" />
+              EPUB viewer experiment
+            </a>
             <button
               type="button"
               className="btn btn-ghost btn-sm"

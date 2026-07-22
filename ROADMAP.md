@@ -1,563 +1,251 @@
 # Stillpoint Product Roadmap
 
-This roadmap evolves Stillpoint from a standalone RSVP player into a complete reading environment with two connected experiences:
+Stillpoint is a local-first reading library with two connected reading experiences:
 
-- **Navigation mode** for context, skimming, scrolling, chapters, and choosing where to read.
-- **Immersive mode** for focused RSVP playback.
+- **Book mode** renders EPUBs with `react-epub-viewer` / Epub.js and preserves the book's own structure and presentation.
+- **Immersive mode** provides focused RSVP reading from a position selected in the book.
 
-The central product principle is:
+The library also supports a lightweight **Paste and read** flow for text that is not packaged as an EPUB.
 
-> Immersion is never a dead end. Readers can always return to a clear position in the document, and every meaningful document position can become an entry point into immersion.
+> The EPUB file is the source of truth. Stillpoint should build features around the viewer instead of converting books into a custom chapter model.
 
 ## Product principles
 
-- [ ] Keep the reader's position synchronized across navigation and immersive modes.
-- [ ] Preserve a fixed ORP position throughout immersive playback.
-- [ ] Stop playback immediately when the reader requests it, regardless of transition state.
-- [ ] Make transitions calm and meaningful without delaying interaction.
-- [ ] Preserve document context instead of treating RSVP as an isolated tool.
-- [ ] Make navigation mode feel like a calm document workspace, not a card-heavy dashboard or text editor.
-- [ ] Respect keyboard navigation, screen readers, browser zoom, and reduced-motion preferences.
-- [ ] Prefer understandable defaults over exposing every timing parameter.
-- [ ] Keep imported document content local unless the reader explicitly chooses otherwise.
+- [ ] Keep imported books and pasted text local unless the reader explicitly chooses otherwise.
+- [ ] Store original EPUB files rather than a lossy extracted representation.
+- [ ] Let Epub.js handle EPUB spine, navigation, pagination, layout, and CFI locations.
+- [ ] Keep book mode calm and familiar before adding Stillpoint-specific controls.
+- [ ] Keep book position and immersive position synchronized.
+- [ ] Never execute scripted EPUB content by default.
+- [ ] Preserve keyboard access, screen-reader support, reflow, browser zoom, and reduced motion.
+- [ ] Avoid loading the EPUB viewer bundle outside book-viewer routes.
 
 ---
 
-# Phase 0: Foundations and playback semantics
+# Architecture decisions
 
-Prepare the current application for shared position state and larger product features.
+## Canonical EPUB renderer
 
-## Player behavior
+- [x] Adopt `react-epub-viewer` as the EPUB rendering foundation.
+- [x] Verify React 19 compatibility.
+- [x] Render a local EPUB through an object URL with `openAs: 'epub'`.
+- [x] Keep the viewer in a lazy-loaded route so Epub.js does not increase the normal app bundle.
+- [ ] Wrap the package behind a Stillpoint-owned viewer adapter so package-specific props and refs do not spread through the app.
+- [ ] Keep `allowScriptedContent` disabled.
 
-- [x] Define what happens when Play is pressed after reaching the end of a document.
-- [x] Add explicit `restart` or `reset` behavior to the RSVP engine.
-- [x] Define one consistent meaning for progress values.
-- [x] Make preview, playback, and navigation use the same progress calculation.
-- [x] Make navigation commands safe when the document contains no tokens.
-- [x] Decide whether pause/resume redisplays the current word or resumes its remaining duration.
-- [x] Decide how a WPM change affects the currently displayed word.
-- [x] Add tests for completion, restart, empty input, and progress consistency.
+## Local data model
 
-## Engine integration
-
-- [x] Replace single mutable callback properties with a subscription API.
-- [x] Make every subscription return an unsubscribe function.
-- [x] Define a stable public interface for player state and commands.
-- [x] Remove stale implementation comments and unused function arguments.
-- [x] Add a documented token shape using JSDoc or TypeScript.
-- [x] Ensure token metadata fields always use consistent boolean values.
-
-## Browser-level test foundation
-
-- [x] Choose a browser test framework, preferably Playwright.
-- [x] Add a test for entering immersive mode.
-- [x] Add a test for exiting during the countdown.
-- [x] Add a test confirming playback does not restart after exit.
-- [x] Add a test for keyboard controls.
-- [x] Add desktop and mobile long-word layout tests.
-- [x] Add a reduced-motion transition test.
-
-## Completion criteria
-
-- [x] Playback has documented and tested end, restart, pause, and progress semantics.
-- [x] Empty documents cannot crash the player.
-- [x] UI components can subscribe to engine events without replacing one another.
-- [x] Critical immersive-mode lifecycle behavior is covered in a real browser.
-
----
-
-# Phase 1: Connected reading modes
-
-Build the central Stillpoint experience: navigating a document and entering or leaving immersive reading without losing position.
-
-## Document reading view
-
-- [x] Separate document import/editing from document reading.
-- [x] Replace the textarea-only reading experience with rendered document content.
-- [x] Render paragraphs with stable IDs.
-- [x] Preserve paragraph breaks and basic punctuation.
-- [x] Keep the reading column comfortable at desktop and mobile widths.
-- [x] Add an explicit **Edit document** action.
-- [x] Add an empty-document state.
-
-## Shared reading position
-
-- [x] Introduce a first-class reading-position model.
-- [x] Track the current paragraph or block ID.
-- [x] Track the current token offset inside that block.
-- [x] Move position ownership out of the private RSVP timer closure.
-- [x] Make navigation mode and immersive mode read from the same position.
-- [x] Update shared position as RSVP playback advances.
-- [x] Add tests for position conversion between document blocks and RSVP tokens.
-
-Suggested initial shape:
+Use one library with source-specific records.
 
 ```js
 {
-  blockId: 'paragraph-7',
-  tokenOffset: 12
+  id: 'book-id',
+  kind: 'epub', // or 'text'
+  title: 'Book title',
+  authors: [],
+  cover: null,
+  source: {
+    file: Blob,
+    fileName: 'book.epub',
+    mediaType: 'application/epub+zip'
+  },
+  reading: {
+    cfi: null,
+    percentage: 0,
+    chapterLabel: null
+  },
+  createdAt: 0,
+  lastOpenedAt: 0
 }
 ```
 
-## Entering immersive mode
+Text records should store their original pasted text and RSVP position without pretending to be EPUBs.
 
-- [x] Let the reader start from the beginning of a paragraph.
-- [x] Add an **Immerse from here** action.
-- [x] Add a persistent **Resume reading** action.
-- [x] Start RSVP at the selected document position.
-- [x] Decide whether heading clicks start at the heading or the following paragraph.
-- [x] Prevent accidental immersive activation while selecting text.
-- [x] Ensure paragraph entry works with keyboard navigation.
+- [ ] Version the new library schema.
+- [ ] Store EPUB `Blob`s in IndexedDB.
+- [ ] Store metadata and progress separately from the binary file where useful.
+- [ ] Define migrations or a clean reset path for legacy text-only records.
+- [ ] Revoke temporary object URLs when books are replaced, closed, or removed.
 
-## Exiting immersive mode
+## Position model
 
-- [x] Pause playback immediately on exit.
-- [x] Return to navigation mode at the exact current paragraph.
-- [x] Scroll the current paragraph into view.
-- [x] Apply a persistent, subtle current-paragraph marker.
-- [x] Apply a temporary exact-word highlight after returning.
-- [x] Fade the exact-word highlight without losing the paragraph marker.
-- [x] Restore focus to a meaningful element in navigation mode.
-
-## Mode transition
-
-- [x] Design the navigation-to-immersive transition.
-- [x] Fade and soften surrounding document content.
-- [x] Keep the selected paragraph visually connected during entry.
-- [x] Introduce the RSVP focal point before playback begins.
-- [x] Reverse the transition when returning to navigation mode.
-- [x] Keep transition duration around 700–1,000 ms.
-- [x] Stop playback immediately even if an exit animation is still running.
-- [x] Implement a reduced-motion opacity-only transition.
-- [x] Prevent animation state from corrupting reading position.
-
-## Navigation-mode controls
-
-- [x] Add document progress.
-- [x] Add current-position status.
-- [x] Add a Resume button with useful context.
-- [x] Add a visible action for returning to the document editor.
-- [x] Ensure controls remain usable at high browser zoom.
-
-## Completion criteria
-
-- [x] A reader can start immersive playback from a chosen paragraph.
-- [x] Exiting returns to the correct document location.
-- [x] Position remains synchronized after sentence navigation, pause, and resume.
-- [x] The transition works with normal and reduced motion.
-- [x] Navigation mode is usable without a mouse.
+- [ ] Use EPUB CFI as the canonical position for EPUB books.
+- [ ] Persist the latest CFI and percentage from viewer page-change events.
+- [ ] Restore the saved CFI when a book opens.
+- [ ] Keep the existing block/token position model only for pasted-text records.
+- [ ] Define an immersive session bridge that records both the source CFI and RSVP token offset.
 
 ---
 
-# Phase 2: Document structure and chapters
+# Phase 1: Local EPUB library
 
-Add chapters, headings, a table of contents, and meaningful section boundaries.
+Make EPUB import and reopening reliable before redesigning the viewer.
 
-## Structured document model
+## Storage
 
-- [x] Define a document model with stable document, section, block, and token IDs.
-- [x] Represent headings, paragraphs, quotes, lists, and separators.
-- [x] Keep source text separate from parsed document structure.
-- [x] Store token-to-block mappings for position synchronization.
-- [x] Preserve enough source information to edit or reparse a document.
+- [ ] Accept local `.epub` files from the library.
+- [ ] Validate file extension, media type, and a practical maximum file size.
+- [ ] Store the original EPUB `Blob` in IndexedDB.
+- [ ] Read title, author, cover, language, and navigation metadata through Epub.js.
+- [ ] Save metadata without maintaining a second custom EPUB parser.
+- [ ] Reopen a stored book by creating a fresh object URL.
+- [ ] Persist CFI, percentage, current chapter label, and last-opened time.
+- [ ] Delete the binary file and related state together.
+- [ ] Handle quota, corrupted records, unsupported EPUBs, and DRM failures with actionable messages.
 
-Suggested direction:
+## Library UI
 
-```js
-{
-  id: 'document-1',
-  title: 'Document title',
-  sections: [
-    {
-      id: 'chapter-1',
-      title: 'Introduction',
-      blocks: [
-        {
-          id: 'paragraph-1',
-          type: 'paragraph',
-          tokens: []
-        }
-      ]
-    }
-  ]
-}
-```
+- [ ] Make **Import EPUB** the primary library action.
+- [ ] Display cover, title, author, progress, and last-opened time.
+- [ ] Open a book directly in the viewer.
+- [ ] Support rename, delete, and replacement actions without changing the EPUB file itself.
+- [ ] Explain clearly that books remain in this browser.
+- [ ] Add an empty-library state focused on importing a first book.
 
-## Import and parsing
+## Completion criteria
 
-- [x] Choose the first structured input format, preferably Markdown.
-- [x] Parse Markdown headings into sections.
-- [x] Detect plain-text chapter labels such as `Chapter 1`.
-- [x] Decide how short standalone lines are treated.
-- [x] Provide a preview of detected document structure.
-- [x] Let the reader correct titles and chapter boundaries.
-- [x] Handle documents with no headings as one section.
-- [x] Preserve URLs, punctuation, paragraph breaks, and Unicode text.
-- [x] Add parser tests for malformed and ambiguous input.
+- [ ] A full-length EPUB can be imported once and reopened after a reload without selecting the file again.
+- [ ] The viewer restores the exact saved CFI.
+- [ ] Removing a book removes its stored Blob and progress.
+- [ ] No EPUB content is uploaded or executed as script.
 
-## Document workspace shell
+---
 
-Navigation mode should support scrolling, skimming, searching, and choosing where to begin while feeling like a focused reading surface rather than a dashboard.
+# Phase 2: Paste and read
 
-```text
-┌──────────────────────────────────────────────────────────────┐
-│ Stillpoint       Document title               Search  Theme  │
-├───────────────┬──────────────────────────────────────────────┤
-│ Contents      │                                              │
-│ Introduction  │              Chapter title                   │
-│ Basics        │              Section heading                 │
-│ ORP           │              Paragraph text...               │
-│ Timing        │              Paragraph text...               │
-│ Summary       │                                              │
-├───────────────┴──────────────────────────────────────────────┤
-│         Click any word, heading, or paragraph to Immerse     │
-└──────────────────────────────────────────────────────────────┘
-```
+Keep a simple path for articles, notes, and copied text.
 
-- [x] Replace the current card-like document header with a restrained workspace shell.
-- [x] Add a minimal top bar containing Stillpoint, the document title, and only actions that are currently available.
-- [x] Reserve natural top-bar locations for Search in Phase 4 and Theme in Phase 3 without showing inactive placeholder controls.
-- [x] Keep the document column centered with a comfortable reading measure independent of sidebar width.
-- [x] Use whitespace, typography, and subtle dividers instead of a card-heavy dashboard treatment.
-- [x] Keep document content visually primary while controls remain discoverable by keyboard and pointer.
-- [x] Define tablet behavior for the top bar, document column, and collapsed contents navigation.
-- [x] Define mobile behavior with a contents drawer, reflowed top bar, safe-area spacing, and no horizontal overflow.
-- [x] Add responsive browser tests for desktop, tablet, narrow mobile, and high zoom.
+- [ ] Add **Paste and read** beside **Import EPUB** in the library.
+- [ ] Accept clipboard text and manual textarea input.
+- [ ] Validate that the input contains readable text before saving.
+- [ ] Create a local text record with title, progress, and last-opened time.
+- [ ] Open pasted text in a minimal reading surface.
+- [ ] Allow immediate immersive RSVP reading.
+- [ ] Preserve exact text position across reloads.
+- [ ] Keep text records visually distinct from EPUB books in the library.
 
-## Table of contents
+## Completion criteria
 
-- [x] Add a narrow, collapsible desktop table-of-contents sidebar on the left.
-- [x] Add a collapsed tablet treatment that does not reduce the document to an uncomfortable width.
-- [x] Add a mobile table-of-contents drawer or sheet.
-- [x] Highlight the current chapter.
-- [x] Let readers jump to a chapter without entering immersive mode.
-- [x] Add an **Immerse chapter** action.
-- [x] Keep the URL or application state synchronized with the selected chapter if routing is introduced.
-- [x] Ensure table-of-contents controls are keyboard and screen-reader accessible.
+- [ ] A reader can paste text, read immediately, and find it in the local library later.
+- [ ] Clipboard denial, empty input, and unavailable clipboard APIs have useful feedback.
 
-## Multi-level immersive entry
+---
 
-- [x] Let a reader activate an individual word and begin immersive playback at that exact token.
-- [x] Let a reader activate a paragraph and begin at its first readable token.
-- [x] Give paragraphs a subtle hover and focus-within treatment with a small **Immerse from here** action.
-- [x] Let a reader activate a heading and begin at the following readable block rather than reading the heading itself.
-- [x] Keep document text selectable and suppress immersive activation when the reader is selecting text.
-- [x] Provide keyboard-accessible equivalents for word, paragraph, and heading entry without turning reading text into a noisy tab sequence.
-- [x] Use event delegation or another scalable strategy instead of attaching heavy handlers to every rendered word.
-- [x] Preserve token, block, and section mappings for every entry level.
-- [x] Add browser tests for pointer, keyboard, text-selection, and exact-token entry.
+# Phase 3: Stillpoint viewer shell
 
-## Exact-position return refinement
+Build around `react-epub-viewer` without replacing its EPUB rendering.
 
-- [x] Scroll the current token—not only its paragraph—into view when navigation mode returns.
-- [x] Position the current token near the vertical center of the viewport where document boundaries allow.
-- [x] Apply a restrained temporary token glow for approximately one second.
-- [x] Keep the permanent block-level reading-position marker after the token glow disappears.
-- [x] Ensure the temporary glow and permanent marker remain distinguishable from search results and text selection.
-- [x] Preserve the printed-page metaphor: the marker should feel like returning a finger to the correct place.
-- [x] Respect reduced motion without removing the exact-position indication.
+- [ ] Create a Stillpoint viewer adapter and route for a stored book ID.
+- [ ] Replace the experiment header with the production viewer shell.
+- [ ] Integrate the package TOC into the Stillpoint visual system.
+- [ ] Preserve native pagination and publisher content styling.
+- [ ] Add restrained controls for library, appearance, progress, and immersive entry.
+- [ ] Persist viewer font, size, line height, margins, flow, and spread preferences.
+- [ ] Define desktop, tablet, mobile, and high-zoom layouts.
+- [ ] Add loading, malformed-book, and recovery states.
+- [ ] Keep the viewer package dynamically imported.
 
-## Bottom interaction hint
+## Completion criteria
 
-- [x] Add a subtle instruction such as **Click any word, heading, or paragraph to Immerse**.
-- [x] Keep the hint near the bottom of the workspace without obscuring document content or mobile controls.
-- [x] Reduce its opacity after a short delay without making the text unreadable.
-- [x] Hide it for the remainder of the session after the reader successfully starts immersive mode.
-- [x] Defer permanent dismissal to the Phase 3 preference store.
-- [x] Keep the hint accessible to keyboard and screen-reader users and static under reduced motion.
+- [ ] Book mode feels like an EPUB reader rather than an extracted document editor.
+- [ ] Navigation, pagination, TOC, and position restoration work on desktop and mobile.
+
+---
+
+# Phase 4: EPUB-to-immersive bridge
+
+Add Stillpoint features through Epub.js APIs rather than reparsing the full book.
+
+## Click or selection to immerse
+
+- [ ] Use rendition/content hooks to observe clicks inside the EPUB iframe.
+- [ ] Resolve the selected DOM range or clicked text to an EPUB CFI.
+- [ ] Extract a bounded text window from the current spine section only.
+- [ ] Tokenize that bounded text for RSVP without converting the entire book.
+- [ ] Start immersive mode at the selected word or nearest readable word.
+- [ ] Prevent entry while the reader is making a text selection unless explicitly requested.
+- [ ] Provide a keyboard-accessible **Immerse from here** action.
+
+## Return to book
+
+- [ ] Pause immediately on exit.
+- [ ] Translate the immersive token position back to a CFI.
+- [ ] Return the viewer to that CFI.
+- [ ] Highlight the exact return range briefly inside the rendition.
+- [ ] Restore focus to a meaningful viewer control.
+- [ ] Keep reduced-motion behavior calm and immediate.
 
 ## Chapter-aware playback
 
-- [x] Mark chapter boundaries in the reading-position model.
-- [x] Detect when immersive playback reaches the end of a chapter.
-- [x] Prevent chapter-boundary prompts from being triggered more than once.
-- [x] Keep direct navigation correct across chapter boundaries.
-- [x] Show the next chapter title before continuing.
-- [x] Calculate chapter and document progress separately.
-
-## Chapter completion prompt
-
-- [x] Design a calm chapter-complete interstitial.
-- [x] Show the completed chapter title.
-- [x] Show optional session information such as reading time and words read.
-- [x] Add **Continue to next chapter**.
-- [x] Add **Return to document**.
-- [x] Add **Review chapter** if it is meaningfully different from returning.
-- [x] Support keyboard selection.
-- [x] Restore the correct position after every choice.
-
-## Completion behavior settings
-
-- [x] Add **Ask what to do** mode.
-- [x] Add **Continue automatically** mode.
-- [x] Add **Return to document** mode.
-- [x] Use Ask mode as the initial default.
-- [x] Add a short cancelable countdown before automatic continuation.
-- [x] Persist the selected behavior.
-- [x] Add tests for all chapter-completion modes.
+- [ ] Use Epub.js spine/navigation data for chapter boundaries.
+- [ ] Keep chapter and book progress distinct.
+- [ ] Offer continue, return, and review behavior at chapter end.
+- [ ] Avoid extracting or tokenizing chapters that the reader has not opened.
 
 ## Completion criteria
 
-- [x] Navigation mode presents a calm, responsive document workspace rather than a dashboard.
-- [x] Structured documents display a usable table of contents.
-- [x] Readers can enter immersive mode from an exact word, paragraph, heading, or chapter.
-- [x] Returning from immersion centers and marks the exact current token while retaining a block marker.
-- [x] Chapter navigation and immersive position remain synchronized.
-- [x] Chapter completion behavior follows the selected setting.
-- [x] Documents without headings still work correctly.
+- [ ] A reader can click a word in the rendered EPUB, read immersively, and return to the same CFI.
+- [ ] Large books do not require rendering or tokenizing all chapters at once.
 
 ---
 
-# Phase 3: Persistence, library, and settings
+# Phase 5: Reading tools
 
-Remember documents, positions, and preferences across sessions.
-
-## Local document library
-
-- [x] Choose local persistence, initially IndexedDB or another browser-local store.
-- [x] Save imported documents locally.
-- [x] List saved documents with title, progress, and last-opened time.
-- [x] Open a saved document at its last reading position.
-- [x] Rename documents.
-- [x] Delete documents with confirmation.
-- [x] Handle storage errors and quota limits.
-- [x] Explain clearly that documents remain local.
-- [x] Add export and backup options before users depend on local storage.
-
-## Reading-session persistence
-
-- [x] Persist current chapter, block, and token offset.
-- [x] Persist completed chapters.
-- [x] Persist WPM.
-- [x] Persist chapter completion behavior.
-- [x] Persist navigation scroll position where useful.
-- [x] Debounce position writes to avoid excessive storage operations.
-- [x] Recover gracefully from an invalid or outdated saved position.
-- [x] Version persisted data and plan migrations.
-
-## Personalized calibration
-
-- [x] Offer an optional first-run calibration instead of assuming one default reading speed fits everyone.
-- [x] Use a roughly 30-second representative passage with normal punctuation, varied word lengths, and enough context for comprehension.
-- [x] Ask a short, accessible comprehension check after the passage.
-- [x] Combine reading comfort and comprehension—not speed alone—to recommend an initial WPM.
-- [x] Avoid presenting the recommendation as a precise clinical or cognitive measurement.
-- [x] Let readers accept, adjust, or ignore the recommended speed.
-- [x] Persist the current recommendation, calibration date, passage version, and result history locally.
-- [x] Offer an explicit **Recalibrate** action in reading settings.
-- [x] Offer occasional, non-blocking recalibration prompts after meaningful reading time or word-count milestones.
-- [x] Let readers dismiss periodic prompts permanently or postpone them.
-- [x] Compare recalibration results over time without streaks, pressure, or claims that faster is always better.
-- [x] Account for passage familiarity, language, and content difficulty when interpreting results.
-- [x] Add browser tests for completing, skipping, retrying, dismissing, and applying calibration.
-
-## Reading settings
-
-- [x] Use the accepted calibration result as the initial WPM while preserving manual overrides.
-- [x] Add pacing presets: Smooth, Natural, and Deliberate.
-- [x] Add WPM control.
-- [x] Add countdown duration.
-- [x] Retire configurable word-rewind distance in favor of sentence navigation.
-- [x] Add punctuation-pause strength.
-- [x] Add long-word timing preference.
-- [x] Add function-word acceleration toggle.
-- [x] Keep advanced timing controls behind an expandable section.
-- [x] Preview timing changes before applying them globally.
-
-## Appearance settings
-
-- [x] Add theme selection.
-- [x] Expose theme selection from the minimal document top bar without turning it into a settings toolbar.
-- [x] Add document font selection.
-- [x] Add document width and line-height controls.
-- [x] Add immersive word-size control.
-- [x] Add ORP accent-color selection.
-- [x] Add reduced-effects preference in addition to system reduced motion.
-- [x] Validate contrast for every supported theme.
-
-## Navigation settings
-
-- [x] Keep the table of contents consistently available in document view.
-- [x] Add **Keep current token centered after exit**.
-- [x] Add **Remember that I dismissed the immersive-entry hint**.
-- [x] Add **Resume automatically when opening a document**.
-- [x] Add **Remember document scroll position**.
-
-## Clipboard and error feedback
-
-- [x] Replace console-only clipboard errors with user-visible feedback.
-- [x] Distinguish permission denial from empty clipboard content.
-- [x] Explain secure-context requirements when clipboard access is unavailable.
-- [x] Avoid replacing the current document until clipboard text is validated.
-
-## Completion criteria
-
-- [x] Documents and reading positions survive page reloads.
-- [x] Settings are restored consistently.
-- [x] Stored data has a versioned schema and recovery behavior.
-- [x] Readers can export or remove their local data.
-- [x] Readers can calibrate, override, and later revisit their recommended reading pace.
+- [ ] Search through Epub.js spine resources with incremental indexing.
+- [ ] Add CFI-based bookmarks.
+- [ ] Add notes and highlights anchored to CFI ranges.
+- [ ] Include bookmarks, notes, settings, and progress in local exports.
+- [ ] Add optional session summaries without streaks or forced gamification.
+- [ ] Reintroduce calibration and pacing controls where they fit the new viewer architecture.
 
 ---
 
-# Phase 4: Advanced reading tools
-
-Expand navigation, comprehension, and review without cluttering immersive mode.
-
-## Context peek
-
-- [x] Design a temporary sentence-context overlay while immersive playback is paused.
-- [x] Keep the current word highlighted within the sentence.
-- [x] Support a press-and-hold keyboard interaction.
-- [x] Support an accessible on-screen equivalent.
-- [x] Return to fixed-ORP mode without moving the reading position.
-
-## Semantic navigation
-
-- [x] Add previous-sentence navigation.
-- [x] Add next-sentence navigation.
-- [x] Keep semantic navigation focused on sentences; defer paragraph navigation.
-- [x] Pause playback and hold on the destination after sentence navigation.
-- [x] Use direct left/right arrow bindings without configurable shortcuts for now.
-
-## Lightweight EPUB import — next priority
-
-Keep EPUB support focused on reflowable reading. PDF import, DRM support, exact visual reproduction, complex layouts, embedded fonts, and rich-media playback are intentionally out of scope.
-
-- [ ] Choose a lightweight browser ZIP dependency and use native XML/XHTML parsing rather than a full book renderer.
-- [ ] Accept local `.epub` files from the document import flow without uploading them.
-- [ ] Parse EPUB 2 and EPUB 3 container, package, manifest, spine, navigation-document, and legacy NCX data.
-- [ ] Preserve title, author, language, source filename, table of contents, chapters, and spine reading order.
-- [ ] Extract supported headings, paragraphs, lists, and quotes into Stillpoint’s existing structured document model.
-- [ ] Ignore scripts, styling, fonts, remote resources, and unsupported rich media instead of attempting visual reproduction.
-- [ ] Show a reviewable metadata, table-of-contents, chapter-structure, and text preview before saving.
-- [ ] Allow a chapter action in the table of contents to begin immersive reading at its first readable word.
-- [ ] Persist the imported book and exact reading position so reopening it resumes where the reader stopped.
-- [ ] Keep extraction on-device and prevent imported markup from executing or fetching remote resources.
-- [ ] Enforce archive file-size, extracted-size, entry-count, compression-ratio, and path-safety limits.
-- [ ] Detect malformed, unsupported, or encrypted EPUBs and provide concise actionable feedback.
-- [ ] Preserve useful EPUB metadata in library records and JSON exports without storing unnecessary archive resources.
-- [ ] Add generated parser fixtures for valid EPUB 2/3, legacy NCX, missing metadata, malformed packages, encrypted content, and unsafe archives.
-- [ ] Add browser tests for import, preview, cancellation, chapter entry, library persistence, and exact-position resume.
-
-## Search
-
-- [ ] Add full-document search in navigation mode.
-- [ ] Open search from the minimal document top bar with a keyboard shortcut and accessible on-screen action.
-- [ ] Highlight results without interfering with the reading-position marker.
-- [ ] Jump to a search result in navigation mode.
-- [ ] Add **Immerse from result**.
-- [ ] Preserve search state when returning from immersive mode where useful.
-
-## Bookmarks and notes
-
-- [ ] Bookmark paragraphs or exact positions.
-- [ ] Add notes in navigation mode.
-- [ ] List bookmarks and notes per document.
-- [ ] Jump from a bookmark to navigation mode.
-- [ ] Enter immersive mode from a bookmark.
-- [ ] Include notes and bookmarks in exports.
-
-## Session summaries
-
-- [ ] Track session duration.
-- [ ] Track words read.
-- [ ] Track average effective WPM.
-- [ ] Track completed chapters.
-- [ ] Show an optional, understated session summary after exit.
-- [ ] Avoid manipulative streaks or forced gamification.
-
-## Completion criteria
-
-- [x] Readers can recover context without abandoning their position.
-- [ ] Readers can import an EPUB, review its structure, choose a chapter, and read it immersively.
-- [ ] Imported EPUBs reopen at the exact saved position after a reload or later visit.
-- [ ] Search, bookmarks, and notes remain navigation-mode tools rather than immersive clutter.
-- [ ] Imported EPUBs retain useful source metadata and fail with actionable feedback.
-
----
-
-# Cross-cutting engineering work
-
-These tasks apply throughout all phases.
+# Cross-cutting work
 
 ## Accessibility
 
-- [ ] Maintain complete keyboard operation.
-- [ ] Manage focus during every mode transition and modal prompt.
-- [ ] Respect `prefers-reduced-motion`.
-- [ ] Test at 200% and 400% browser zoom.
-- [ ] Test screen-reader announcements for countdowns, completion, and errors.
-- [ ] Ensure color is not the only indicator of reading position.
-- [ ] Verify text and control contrast.
-- [ ] Provide touch-friendly targets on mobile.
-
-## Internationalization and text correctness
-
-- [ ] Document that current timing rules are optimized for English.
-- [ ] Make ORP calculation aware of leading and trailing punctuation.
-- [ ] Use Unicode-aware letter matching.
-- [ ] Evaluate grapheme segmentation for emoji and composed characters.
-- [ ] Make function-word timing language-specific or configurable.
-- [ ] Test curly quotes, apostrophes, accented text, and non-Latin scripts.
-- [ ] Define behavior for numbers, dates, times, code, and URLs.
+- [ ] Verify all package controls with keyboard and screen readers.
+- [ ] Manage focus across library, viewer, TOC, settings, and immersive mode.
+- [ ] Test 200% and 400% zoom.
+- [ ] Provide touch-friendly targets and mobile reflow.
+- [ ] Ensure position and progress are not communicated by color alone.
 
 ## Performance
 
-- [ ] Profile immersive playback at the maximum supported 600 WPM.
-- [ ] Profile long-word measurement on mobile hardware.
-- [ ] Avoid unnecessary layout reads and writes per word.
-- [ ] Recalculate visible-word fitting after viewport changes.
-- [ ] Test large documents without rendering every interactive word at once.
-- [ ] Consider virtualization for very large navigation views.
-- [ ] Keep transition effects smooth on lower-powered devices.
-
-## Quality and delivery
-
-- [ ] Add CI for install, lint, tests, and production build.
-- [ ] Add browser tests to CI.
-- [ ] Use explicit dependency version ranges instead of `latest`.
-- [ ] Add formatting and formatting-check scripts.
-- [ ] Remove unused template assets.
-- [ ] Add error boundaries or equivalent recovery for rendering failures.
-- [ ] Add lightweight release notes or a changelog.
+- [ ] Profile full-length books on lower-powered mobile hardware.
+- [ ] Keep Epub.js in a route-level lazy chunk.
+- [ ] Avoid whole-book DOM rendering and whole-book RSVP tokenization.
+- [ ] Generate or cache locations without blocking initial reading where possible.
+- [ ] Revoke object URLs and rendition resources reliably.
 
 ## Privacy and security
 
-- [ ] Keep pasted and imported text local by default.
-- [ ] Never send document content to external services without explicit consent.
-- [ ] Explain clipboard permission and secure-context requirements.
-- [ ] Sanitize rendered imported HTML if HTML import is introduced.
-- [ ] Treat imported files and metadata as untrusted input.
-- [ ] Provide a clear way to delete all local data.
+- [ ] Keep EPUB Blobs, pasted text, positions, notes, and settings local.
+- [ ] Treat files and metadata as untrusted input.
+- [ ] Keep scripted EPUBs disabled by default and document the risk clearly.
+- [ ] Never send book content to external services without explicit consent.
+- [ ] Provide **Delete all local data**.
 
----
+## Quality
 
-# Deferred ideas
-
-These ideas are valuable but should not distract from position synchronization and chapter-aware navigation.
-
-- [ ] Immerse a selected text range.
-- [ ] Shareable reading-position links.
-- [ ] Cross-device synchronization.
-- [ ] Cloud document library.
-- [ ] Collaborative annotations.
-- [ ] Optional reading analytics.
-- [ ] Custom timing profiles per document type.
-- [ ] Text-to-speech synchronization.
-- [ ] Offline installable PWA support.
+- [ ] Add generated, redistributable EPUB fixtures for automated tests.
+- [ ] Test import, persistence, reopen, CFI restore, deletion, and quota failures.
+- [ ] Test the isolated viewer route in desktop and mobile browsers.
+- [ ] Add CI for install, lint, unit tests, browser tests, and production build.
+- [ ] Add an error boundary around the third-party viewer.
 
 ---
 
 # Immediate next milestone
 
-The recommended next milestone is **Phase 0 followed by the smallest usable slice of Phase 1**:
+Build the smallest durable vertical slice around the new renderer:
 
-- [ ] Define restart and progress semantics.
-- [ ] Introduce a shared reading-position model.
-- [ ] Render pasted text as paragraphs in navigation mode.
-- [ ] Start immersive mode from a selected paragraph.
-- [ ] Return to that paragraph at the current word.
-- [ ] Add one browser test for the complete navigation → immersion → navigation loop.
+1. [ ] Define the versioned EPUB library record.
+2. [ ] Store an uploaded EPUB Blob in IndexedDB.
+3. [ ] List the stored book in the library.
+4. [ ] Open it through a Stillpoint viewer adapter.
+5. [ ] Persist and restore its CFI.
+6. [ ] Delete the book and revoke its resources.
+7. [ ] Add **Paste and read** as the secondary library action.
 
-Do not begin chapter parsing or persistence until this loop feels reliable and natural.
+Do not add custom EPUB chapter parsing. Do not begin click-to-immerse until local import, reopen, position restoration, and deletion are reliable.
