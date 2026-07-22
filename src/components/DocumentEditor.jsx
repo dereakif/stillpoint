@@ -6,7 +6,7 @@ import {
   readDocumentFromClipboard,
 } from '../clipboardImport';
 
-const DocumentEditor = ({ text, onSave, onCancel }) => {
+const DocumentEditor = ({ text, onSave, onCancel, cancelLabel = 'Cancel' }) => {
   const [draft, setDraft] = useState(text);
   const [isReadingClipboard, setIsReadingClipboard] = useState(false);
   const [pendingClipboardText, setPendingClipboardText] = useState(null);
@@ -268,7 +268,7 @@ const DocumentEditor = ({ text, onSave, onCancel }) => {
             className="inline-flex items-center gap-2 rounded-xl border border-border px-5 py-3 font-medium transition motion-reduce:transition-none hover:bg-base-200"
           >
             <X className="size-4" />
-            Cancel
+            {cancelLabel}
           </button>
         )}
 

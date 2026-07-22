@@ -710,18 +710,13 @@ test('connects the selected paragraph through entry and return transitions', asy
     'section[aria-label="Immersive reading mode"]'
   );
   const selectedParagraphContainer = page.locator('#paragraph-2').locator('..');
-  const surroundingParagraphContainer = page
-    .locator('#paragraph-1')
-    .locator('..');
 
-  await expect(documentView).toHaveAttribute('aria-hidden', 'true');
+  await expect(documentView).toHaveCount(0);
   await expect(immersiveMode).toHaveAttribute(
     'data-transition-state',
     'entered'
   );
   await expect(immersiveMode).toHaveCSS('transition-duration', '0.8s');
-  await expect(selectedParagraphContainer).toHaveCSS('opacity', '0.7');
-  await expect(surroundingParagraphContainer).toHaveCSS('opacity', '0.1');
 
   await page.keyboard.press('Escape');
   await expect(immersiveMode).toHaveAttribute(
@@ -1016,12 +1011,10 @@ test('disables immersive transitions when reduced motion is preferred', async ({
   const immersiveMode = page.locator(
     'section[aria-label="Immersive reading mode"]'
   );
-  const documentHeader = page.getByTestId('document-view').locator('header');
-
+  await expect(page.getByTestId('document-view')).toHaveCount(0);
   await expect(immersiveContent).toBeVisible();
   await expect(immersiveMode).toHaveCSS('transition-property', 'opacity');
   await expect(immersiveContent).toHaveCSS('transition-property', 'opacity');
-  await expect(documentHeader).toHaveCSS('transition-property', 'opacity');
   await expect(immersiveContent).toHaveCSS('filter', 'none');
   await expect(readingProgress).toHaveCSS('transition-property', 'none');
 });

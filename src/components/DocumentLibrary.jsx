@@ -1,5 +1,12 @@
-import { BookOpen, Download, FilePlus2, Pencil, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import {
+  BookOpen,
+  ClipboardPaste,
+  Download,
+  Pencil,
+  Trash2,
+  Upload,
+} from 'lucide-react';
+import { useRef, useState } from 'react';
 
 const downloadJson = (filename, value) => {
   const blob = new Blob([JSON.stringify(value, null, 2)], {
@@ -13,6 +20,15 @@ const downloadJson = (filename, value) => {
   URL.revokeObjectURL(url);
 };
 
+const downloadFile = (file, fileName) => {
+  const url = URL.createObjectURL(file);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = fileName;
+  anchor.click();
+  window.setTimeout(() => URL.revokeObjectURL(url), 0);
+};
+
 const formatLastOpened = (timestamp) =>
   new Intl.DateTimeFormat(undefined, {
     dateStyle: 'medium',
@@ -22,24 +38,58 @@ const formatLastOpened = (timestamp) =>
 const DocumentLibrary = ({
   documents,
   onOpen,
-  onCreate,
+  onImportEpub,
+  onPasteAndRead,
   onRename,
   onDelete,
 }) => {
+  const epubInputRef = useRef(null);
+  const [isReadingClipboard, setIsReadingClipboard] = useState(false);
   const [renameTarget, setRenameTarget] = useState(null);
   const [renameDraft, setRenameDraft] = useState('');
   const [deleteTarget, setDeleteTarget] = useState(null);
+
+  const textDocuments = documents.filter((record) => record.kind !== 'epub');
+
+  const pasteAndRead = async () => {
+    if (isReadingClipboard) return;
+    setIsReadingClipboard(true);
+    try {
+      await onPasteAndRead();
+    } finally {
+      setIsReadingClipboard(false);
+    }
+  };
 
   const exportAll = () => {
     downloadJson('stillpoint-library-backup.json', {
       schemaVersion: 1,
       exportedAt: new Date().toISOString(),
-      documents,
+      documents: textDocuments,
+      omittedEpubs: documents
+        .filter((record) => record.kind === 'epub')
+        .map(({ id, title, source }) => ({
+          id,
+          title,
+          fileName: source.fileName,
+          reason: 'Export the original EPUB separately.',
+        })),
     });
   };
 
   return (
     <section className="min-h-screen bg-base-100">
+      <input
+        ref={epubInputRef}
+        type="file"
+        accept=".epub,application/epub+zip"
+        aria-label="Choose EPUB to import"
+        className="sr-only"
+        onChange={async (event) => {
+          await onImportEpub(event.target.files?.[0]);
+          event.target.value = '';
+        }}
+      />
       <header className="border-b border-base-300/80">
         <div className="mx-auto flex min-h-16 w-full max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
           <div>
@@ -47,14 +97,18 @@ const DocumentLibrary = ({
             <h1 className="text-xl font-semibold tracking-tight">Library</h1>
           </div>
           <div className="flex flex-wrap gap-2">
-            <a href="/epub-viewer" className="btn btn-ghost btn-sm">
-              <BookOpen className="size-4" />
-              EPUB viewer experiment
-            </a>
+            <button
+              type="button"
+              className="btn btn-primary btn-sm"
+              onClick={() => epubInputRef.current?.click()}
+            >
+              <Upload className="size-4" />
+              Import EPUB
+            </button>
             <button
               type="button"
               className="btn btn-ghost btn-sm"
-              disabled={!documents.length}
+              disabled={!textDocuments.length}
               onClick={exportAll}
             >
               <Download className="size-4" />
@@ -62,11 +116,16 @@ const DocumentLibrary = ({
             </button>
             <button
               type="button"
-              className="btn btn-primary btn-sm"
-              onClick={onCreate}
+              className="btn btn-ghost btn-sm"
+              disabled={isReadingClipboard}
+              onClick={pasteAndRead}
             >
-              <FilePlus2 className="size-4" />
-              New document
+              {isReadingClipboard ? (
+                <span className="loading loading-spinner loading-xs" />
+              ) : (
+                <ClipboardPaste className="size-4" />
+              )}
+              Paste and read
             </button>
           </div>
         </div>
@@ -75,12 +134,12 @@ const DocumentLibrary = ({
       <div className="mx-auto w-full max-w-5xl px-4 py-10 sm:px-6">
         <div className="mb-8 max-w-2xl">
           <h2 className="text-2xl font-semibold tracking-tight">
-            Your documents
+            Books and documents
           </h2>
           <p className="mt-2 text-sm leading-6 text-base-content/60">
-            Documents, reading positions, and progress stay in this browser's
-            local storage. Nothing is uploaded by Stillpoint. Export a backup
-            before clearing browser data or moving to another device.
+            Books, pasted text, reading positions, and progress stay in this
+            browser's local storage. Nothing is uploaded by Stillpoint. Export
+            anything you need before clearing browser data or moving devices.
           </p>
         </div>
 
@@ -101,10 +160,19 @@ const DocumentLibrary = ({
                     className="min-w-0 flex-1 text-left"
                     onClick={() => onOpen(documentRecord)}
                   >
-                    <span className="block truncate text-lg font-medium group-hover:text-primary">
-                      {documentRecord.title}
+                    <span className="flex items-center gap-2">
+                      {documentRecord.kind === 'epub' && (
+                        <BookOpen className="size-4 shrink-0 text-primary" />
+                      )}
+                      <span className="block truncate text-lg font-medium group-hover:text-primary">
+                        {documentRecord.title}
+                      </span>
                     </span>
                     <span className="mt-1 block text-xs text-base-content/50">
+                      {documentRecord.kind === 'epub' &&
+                      documentRecord.authors?.length
+                        ? `${documentRecord.authors.join(', ')} · `
+                        : ''}
                       Last opened{' '}
                       {formatLastOpened(documentRecord.lastOpenedAt)}
                     </span>
@@ -124,12 +192,19 @@ const DocumentLibrary = ({
                       type="button"
                       className="btn btn-ghost btn-sm"
                       aria-label={`Export ${documentRecord.title}`}
-                      onClick={() =>
+                      onClick={() => {
+                        if (documentRecord.kind === 'epub') {
+                          downloadFile(
+                            documentRecord.source.file,
+                            documentRecord.source.fileName
+                          );
+                          return;
+                        }
                         downloadJson(
                           `${documentRecord.title.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '') || 'document'}.stillpoint.json`,
                           documentRecord
-                        )
-                      }
+                        );
+                      }}
                     >
                       <Download className="size-4" />
                     </button>
@@ -161,16 +236,31 @@ const DocumentLibrary = ({
           <div className="border-y border-base-300 py-14 text-center">
             <p className="text-lg font-medium">No saved documents yet</p>
             <p className="mt-2 text-sm text-base-content/55">
-              Create a document to begin your local reading library.
+              Import an EPUB or paste text to begin your local reading library.
             </p>
-            <button
-              type="button"
-              className="btn btn-primary mt-5"
-              onClick={onCreate}
-            >
-              <FilePlus2 className="size-4" />
-              Create document
-            </button>
+            <div className="mt-5 flex flex-wrap justify-center gap-2">
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => epubInputRef.current?.click()}
+              >
+                <Upload className="size-4" />
+                Import EPUB
+              </button>
+              <button
+                type="button"
+                className="btn btn-ghost"
+                disabled={isReadingClipboard}
+                onClick={pasteAndRead}
+              >
+                {isReadingClipboard ? (
+                  <span className="loading loading-spinner loading-xs" />
+                ) : (
+                  <ClipboardPaste className="size-4" />
+                )}
+                Paste and read
+              </button>
+            </div>
           </div>
         )}
       </div>
@@ -229,8 +319,9 @@ const DocumentLibrary = ({
           <div className="w-full max-w-sm rounded-xl border border-base-300 bg-base-100 p-5 shadow-2xl">
             <h2 className="text-lg font-semibold">Delete document?</h2>
             <p className="mt-2 text-sm text-base-content/65">
-              “{deleteTarget.title}” and its saved reading position will be
-              removed from this browser. Export it first if you need a backup.
+              “{deleteTarget.title}”, its saved reading position, and any stored
+              EPUB file will be removed from this browser. Export it first if
+              you need a backup.
             </p>
             <div className="mt-5 flex justify-end gap-2">
               <button

@@ -202,7 +202,7 @@ test('creates and lists multiple local documents', async ({ page }) => {
   await page.goto('/');
   await saveDocument(page, '# First Document\n\nfirst');
   await openLibrary(page);
-  await page.getByRole('button', { name: 'New document' }).click();
+  await page.getByRole('button', { name: 'Paste and read' }).click();
   await saveDocument(page, '# Second Document\n\nsecond');
   await openLibrary(page);
 

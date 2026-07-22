@@ -3,7 +3,7 @@ import { clampReadingWpm } from '../readingSpeed';
 const DATABASE_NAME = 'stillpoint-library';
 const DATABASE_VERSION = 1;
 const DOCUMENT_STORE = 'documents';
-export const DOCUMENT_SCHEMA_VERSION = 2;
+export const DOCUMENT_SCHEMA_VERSION = 3;
 
 const DEFAULT_READING_SESSION = Object.freeze({
   position: null,
@@ -137,9 +137,58 @@ const withStore = async (mode, operation) => {
   }
 };
 
-export const normalizeDocumentRecord = (record) => {
-  if (!record) return record;
+const normalizeOptionalString = (value) =>
+  typeof value === 'string' && value.trim() ? value.trim() : null;
 
+const normalizeEpubRecord = (record) => {
+  const source = record.source ?? {};
+  const file = source.file ?? record.file ?? null;
+  const fileName =
+    normalizeOptionalString(source.fileName) ??
+    normalizeOptionalString(file?.name) ??
+    'Untitled.epub';
+  const mediaType =
+    normalizeOptionalString(source.mediaType) ??
+    normalizeOptionalString(file?.type) ??
+    'application/epub+zip';
+  const authors = Array.isArray(record.authors)
+    ? [...new Set(record.authors.map(normalizeOptionalString).filter(Boolean))]
+    : [];
+  const savedReading = record.reading ?? {};
+  const savedPercentage = Number(
+    savedReading.percentage ?? record.progress ?? 0
+  );
+  const percentage = Number.isFinite(savedPercentage)
+    ? Math.min(1, Math.max(0, savedPercentage))
+    : 0;
+  const epubRecord = { ...record };
+  delete epubRecord.file;
+  delete epubRecord.fileName;
+  delete epubRecord.mediaType;
+  delete epubRecord.readingPosition;
+  delete epubRecord.readingSession;
+
+  return {
+    ...epubRecord,
+    kind: 'epub',
+    schemaVersion: DOCUMENT_SCHEMA_VERSION,
+    source: {
+      ...source,
+      file,
+      fileName,
+      mediaType,
+    },
+    authors,
+    reading: {
+      cfi: normalizeOptionalString(savedReading.cfi),
+      percentage,
+      chapterLabel: normalizeOptionalString(savedReading.chapterLabel),
+    },
+    progress: percentage,
+  };
+};
+
+const normalizeTextRecord = (record) => {
   const savedSession = record.readingSession ?? {};
   const completedChapterIds = Array.isArray(savedSession.completedChapterIds)
     ? [...new Set(savedSession.completedChapterIds.filter(Boolean))]
@@ -160,10 +209,18 @@ export const normalizeDocumentRecord = (record) => {
 
   return {
     ...record,
+    kind: 'text',
     schemaVersion: DOCUMENT_SCHEMA_VERSION,
     readingPosition: readingSession.position,
     readingSession,
   };
+};
+
+export const normalizeDocumentRecord = (record) => {
+  if (!record) return record;
+  return record.kind === 'epub'
+    ? normalizeEpubRecord(record)
+    : normalizeTextRecord(record);
 };
 
 export const listDocuments = async () => {
@@ -215,3 +272,72 @@ export const deleteDocument = (id) =>
 export const createDocumentId = () =>
   globalThis.crypto?.randomUUID?.() ??
   `document-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
+const isBlob = (value) =>
+  value != null &&
+  typeof value.arrayBuffer === 'function' &&
+  typeof value.size === 'number' &&
+  typeof value.type === 'string';
+
+const titleFromFileName = (fileName) =>
+  fileName.replace(/\.epub$/i, '').trim() || 'Untitled';
+
+export const createEpubDocumentRecord = (file, overrides = {}) => {
+  if (!isBlob(file)) {
+    throw new TypeError('An EPUB Blob or File is required.');
+  }
+
+  const overrideSource = overrides.source ?? {};
+  const fileName =
+    normalizeOptionalString(overrideSource.fileName) ??
+    normalizeOptionalString(overrides.fileName) ??
+    normalizeOptionalString(file.name);
+  const mediaType =
+    normalizeOptionalString(overrideSource.mediaType) ??
+    normalizeOptionalString(file.type);
+
+  if (!fileName) {
+    throw new TypeError('An EPUB filename is required.');
+  }
+  if (!/\.epub$/i.test(fileName) && mediaType !== 'application/epub+zip') {
+    throw new TypeError('The selected file is not an EPUB.');
+  }
+
+  return normalizeDocumentRecord({
+    ...overrides,
+    id: overrides.id ?? createDocumentId(),
+    kind: 'epub',
+    title:
+      normalizeOptionalString(overrides.title) ?? titleFromFileName(fileName),
+    source: {
+      ...overrideSource,
+      file,
+      fileName,
+      mediaType: mediaType ?? 'application/epub+zip',
+    },
+  });
+};
+
+export const saveEpubDocument = (file, overrides) =>
+  saveDocument(createEpubDocumentRecord(file, overrides));
+
+export const updateEpubReading = async (id, reading) => {
+  const existing = await getDocument(id);
+  if (!existing) {
+    throw new DocumentStorageError(
+      'The document no longer exists.',
+      'not-found'
+    );
+  }
+  if (existing.kind !== 'epub') {
+    throw new DocumentStorageError(
+      'The document is not an EPUB.',
+      'invalid-kind'
+    );
+  }
+
+  return saveDocument({
+    ...existing,
+    reading: { ...existing.reading, ...reading },
+  });
+};

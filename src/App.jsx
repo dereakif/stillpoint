@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import RSVPReader from './components/RSVPReader';
 import DocumentEditor from './components/DocumentEditor';
 import DocumentLibrary from './components/DocumentLibrary';
@@ -6,6 +6,7 @@ import DocumentView from './components/DocumentView';
 import ReadingCalibration from './components/ReadingCalibration';
 import ReadingSettings from './components/ReadingSettings';
 import AppearanceSettings from './components/AppearanceSettings';
+import { readDocumentFromClipboard } from './clipboardImport';
 import {
   createDocumentModel,
   positionToTokenIndex,
@@ -17,6 +18,8 @@ import {
   listDocuments,
   renameDocument as renameStoredDocument,
   saveDocument as saveStoredDocument,
+  saveEpubDocument,
+  updateEpubReading,
 } from './storage/documentLibrary';
 import {
   completeCalibration,
@@ -42,8 +45,12 @@ import {
   saveNavigationSettings,
 } from './storage/navigationSettings';
 
+const EpubBookView = lazy(() => import('./components/EpubBookView'));
+
 const MODE_TRANSITION_DURATION = 800;
 const SESSION_WRITE_DEBOUNCE = 1500;
+const EPUB_WRITE_DEBOUNCE = 750;
+const MAX_EPUB_FILE_SIZE = 100 * 1024 * 1024;
 const CHAPTER_COMPLETION_STORAGE_KEY = 'stillpoint.chapterCompletionBehavior';
 const CHAPTER_COMPLETION_BEHAVIORS = new Set(['ask', 'continue', 'return']);
 
@@ -129,10 +136,14 @@ function App() {
     getInitialChapterCompletionBehavior
   );
   const [libraryDocuments, setLibraryDocuments] = useState([]);
+  const [activeEpub, setActiveEpub] = useState(null);
   const [storageError, setStorageError] = useState(null);
   const returnSequenceRef = useRef(0);
   const exitTimerRef = useRef(null);
   const sessionWriteTimerRef = useRef(null);
+  const epubWriteTimerRef = useRef(null);
+  const pendingEpubReadingRef = useRef(null);
+  const epubMetadataWriteRef = useRef(null);
   const isExitingRef = useRef(false);
 
   const text = document.source.text;
@@ -197,6 +208,14 @@ function App() {
       cancelled = true;
       window.clearTimeout(exitTimerRef.current);
       window.clearTimeout(sessionWriteTimerRef.current);
+      window.clearTimeout(epubWriteTimerRef.current);
+      const pendingEpubReading = pendingEpubReadingRef.current;
+      if (pendingEpubReading) {
+        updateEpubReading(
+          pendingEpubReading.id,
+          pendingEpubReading.reading
+        ).catch(() => {});
+      }
     };
   }, []);
 
@@ -319,6 +338,44 @@ function App() {
     }
   };
 
+  const pasteAndRead = async () => {
+    const emptyDocument = createEmptyDocument();
+
+    try {
+      let clipboardDocument = await readDocumentFromClipboard(emptyDocument);
+      const inferredTitle = clipboardDocument.sections.find(
+        (section) => section.title
+      )?.title;
+      if (clipboardDocument.title === 'Untitled document' && inferredTitle) {
+        clipboardDocument = { ...clipboardDocument, title: inferredTitle };
+      }
+
+      const initialPosition = tokenIndexToPosition(clipboardDocument.tokens, 0);
+      setDocument(clipboardDocument);
+      setReadingPosition(initialPosition);
+      setCompletedChapterIds([]);
+      setNavigationScrollY(0);
+      setReturnContext(null);
+      isExitingRef.current = false;
+      dismissEntryHint();
+      setReadingSessionId((sessionId) => sessionId + 1);
+      setMode('immersive');
+      persistDocument(clipboardDocument, {
+        position: initialPosition,
+        completedChapterIds: [],
+        wpm,
+        navigationScrollY: 0,
+      });
+      setStorageError(null);
+    } catch (error) {
+      setStorageError(
+        error?.message || 'Stillpoint could not read text from the clipboard.'
+      );
+      setDocument(emptyDocument);
+      setMode('edit');
+    }
+  };
+
   const saveDocument = (newText) => {
     let newDocument = createDocumentModel(newText, {
       id: document.id,
@@ -396,6 +453,41 @@ function App() {
     }, MODE_TRANSITION_DURATION);
   };
 
+  const persistPendingEpubReading = async () => {
+    window.clearTimeout(epubWriteTimerRef.current);
+    epubWriteTimerRef.current = null;
+    const pending = pendingEpubReadingRef.current;
+    pendingEpubReadingRef.current = null;
+    if (!pending) return null;
+
+    try {
+      const savedRecord = await updateEpubReading(pending.id, pending.reading);
+      setStorageError(null);
+      return savedRecord;
+    } catch (error) {
+      reportStorageError(error);
+      return null;
+    }
+  };
+
+  const importEpub = async (file) => {
+    if (!file) return;
+    if (file.size > MAX_EPUB_FILE_SIZE) {
+      setStorageError('Choose an EPUB smaller than 100 MB.');
+      return;
+    }
+
+    try {
+      const record = await saveEpubDocument(file);
+      await refreshLibrary();
+      setActiveEpub(record);
+      setStorageError(null);
+      setMode('epub');
+    } catch (error) {
+      reportStorageError(error);
+    }
+  };
+
   const openLibraryDocument = async (record) => {
     const openedDocument = createDocumentModel(record.source.text, {
       id: record.id,
@@ -458,14 +550,79 @@ function App() {
     });
   };
 
-  const createNewDocument = () => {
-    setDocument(createEmptyDocument());
-    setReadingPosition(null);
-    setCompletedChapterIds([]);
-    setWpm(readingSettings.wpm);
-    setNavigationScrollY(0);
-    setReturnContext(null);
-    setMode('edit');
+  const openEpubDocument = async (record) => {
+    try {
+      const openedRecord = await saveStoredDocument({
+        ...record,
+        lastOpenedAt: Date.now(),
+      });
+      setActiveEpub(openedRecord);
+      setStorageError(null);
+      setMode('epub');
+      await refreshLibrary();
+    } catch (error) {
+      reportStorageError(error);
+    }
+  };
+
+  const openLibraryRecord = (record) =>
+    record.kind === 'epub'
+      ? openEpubDocument(record)
+      : openLibraryDocument(record);
+
+  const updateActiveEpubLocation = (reading) => {
+    if (!activeEpub) return;
+
+    pendingEpubReadingRef.current = { id: activeEpub.id, reading };
+    setActiveEpub((current) =>
+      current?.id === activeEpub.id
+        ? {
+            ...current,
+            reading: { ...current.reading, ...reading },
+            progress: reading.percentage ?? current.progress,
+          }
+        : current
+    );
+    window.clearTimeout(epubWriteTimerRef.current);
+    epubWriteTimerRef.current = window.setTimeout(
+      persistPendingEpubReading,
+      EPUB_WRITE_DEBOUNCE
+    );
+  };
+
+  const updateActiveEpubMetadata = async (bookInfo) => {
+    if (
+      !activeEpub ||
+      activeEpub.metadataResolved ||
+      epubMetadataWriteRef.current === activeEpub.id
+    ) {
+      return;
+    }
+
+    epubMetadataWriteRef.current = activeEpub.id;
+    try {
+      const author = bookInfo?.author?.trim();
+      const savedRecord = await saveStoredDocument({
+        ...activeEpub,
+        title: bookInfo?.title?.trim() || activeEpub.title,
+        authors: author ? [author] : activeEpub.authors,
+        metadataResolved: true,
+      });
+      setActiveEpub(savedRecord);
+      await refreshLibrary();
+      setStorageError(null);
+    } catch (error) {
+      reportStorageError(error);
+    } finally {
+      epubMetadataWriteRef.current = null;
+    }
+  };
+
+  const closeEpub = async () => {
+    await persistPendingEpubReading();
+    await refreshLibrary();
+    setActiveEpub(null);
+    setMode('library');
   };
 
   const openLibrary = async () => {
@@ -534,11 +691,32 @@ function App() {
       {mode === 'library' && (
         <DocumentLibrary
           documents={libraryDocuments}
-          onOpen={openLibraryDocument}
-          onCreate={createNewDocument}
+          onOpen={openLibraryRecord}
+          onImportEpub={importEpub}
+          onPasteAndRead={pasteAndRead}
           onRename={renameLibraryDocument}
           onDelete={deleteLibraryDocument}
         />
+      )}
+
+      {mode === 'epub' && activeEpub && (
+        <Suspense
+          fallback={
+            <section
+              aria-label="Loading EPUB reader"
+              className="flex h-screen items-center justify-center"
+            >
+              <span className="loading loading-spinner loading-lg text-primary" />
+            </section>
+          }
+        >
+          <EpubBookView
+            book={activeEpub}
+            onBookInfoChange={updateActiveEpubMetadata}
+            onLibrary={closeEpub}
+            onLocationChange={updateActiveEpubLocation}
+          />
+        </Suspense>
       )}
 
       {mode === 'edit' && (
@@ -546,18 +724,13 @@ function App() {
           text={text}
           onSave={saveDocument}
           onCancel={
-            text.trim()
-              ? () => setMode('document')
-              : libraryDocuments.length
-                ? () => setMode('library')
-                : null
+            text.trim() ? () => setMode('document') : () => setMode('library')
           }
+          cancelLabel="Back"
         />
       )}
 
-      {(mode === 'document' ||
-        mode === 'immersive' ||
-        mode === 'returning') && (
+      {(mode === 'document' || mode === 'returning') && (
         <DocumentView
           document={document}
           readingPosition={readingPosition}
