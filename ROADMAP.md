@@ -73,7 +73,7 @@ Text records should store their original pasted text and RSVP position without p
 - [x] Persist the latest CFI and percentage from viewer relocation events.
 - [x] Restore the saved CFI when a book opens.
 - [x] Keep the existing block/token position model only for pasted-text records.
-- [ ] Define an immersive session bridge that records both the source CFI and RSVP token offset.
+- [x] Define an immersive session bridge that records both the source CFI and RSVP token offset.
 
 ---
 
@@ -212,22 +212,22 @@ Persistent highlighting is intentionally out of scope. The iframe interaction th
 - [x] Resolve the click point to a text node and character offset with `caretPositionFromPoint` / `caretRangeFromPoint` fallbacks.
 - [x] Expand the clicked offset to a word boundary with `Intl.Segmenter` where available and a Unicode-aware fallback.
 - [x] Convert the clicked word range to an exact CFI range through the current Epub.js `Contents` object.
-- [x] Show temporary clicked-word/section/CFI diagnostic feedback without creating a highlight.
-- [ ] Extract only a bounded RSVP text window from the current spine section around that word.
-- [ ] Preserve token-to-CFI-range mappings for the bounded session instead of parsing or tokenizing the whole book.
-- [ ] Start immersive mode at the clicked word or nearest readable token.
+- [x] Validate clicked-word/section/CFI diagnostic feedback during the isolated prototype, then remove it when connecting immersion.
+- [x] Extract only a bounded RSVP text window from the current spine section around that word.
+- [x] Preserve token-to-CFI-range mappings for the bounded session instead of parsing or tokenizing the whole book.
+- [x] Start immersive mode at the clicked word or nearest readable token.
 - [x] Keep EPUB content completely absent behind active immersive mode.
 - [ ] Provide a keyboard-accessible **Immerse from here** action for readers who cannot point to a word.
 - [ ] Verify clicks inside nested inline markup, punctuation, Unicode text, footnotes, and publisher-styled content.
 
 ## Return to book
 
-- [ ] Pause immediately on exit.
-- [ ] Translate the immersive token position back to its stored CFI range.
-- [ ] Return the viewer to that CFI.
-- [ ] Show a temporary return-position indicator without creating a persistent highlight feature.
-- [ ] Restore focus to a meaningful viewer control.
-- [ ] Keep reduced-motion behavior calm and immediate.
+- [x] Pause immediately on exit.
+- [x] Translate the immersive token position back to its stored CFI range.
+- [x] Return the viewer to that CFI.
+- [x] Show a temporary return-position indicator without creating a persistent highlight feature.
+- [x] Restore focus to a meaningful viewer control.
+- [x] Keep reduced-motion behavior calm and immediate.
 
 ## Chapter-aware playback
 
@@ -238,8 +238,8 @@ Persistent highlighting is intentionally out of scope. The iframe interaction th
 
 ## Completion criteria
 
-- [ ] A reader can click a word in the rendered EPUB, read immersively, and return to the same CFI.
-- [ ] Large books do not require rendering or tokenizing all chapters at once.
+- [x] A reader can click a word in the rendered EPUB, read immersively, and return to the same CFI.
+- [x] Large books do not require rendering or tokenizing all chapters at once.
 
 ---
 
@@ -302,6 +302,6 @@ Build the complete EPUB reader shell demonstrated by the package before adding t
 6. [x] Persist and restore viewer settings locally.
 7. [x] Test the shell with the generated fixture and full `moby_dick.epub` on desktop and mobile.
 8. [x] Prototype delegated word-click detection and exact clicked-word CFI generation in the current spine section.
-9. [ ] Connect the clicked word to a bounded immersive RSVP session only after the click/CFI prototype is reliable.
+9. [x] Connect the clicked word to a bounded immersive RSVP session only after the click/CFI prototype is reliable.
 
 Do not add custom EPUB chapter parsing. Do not copy the demo's highlight subsystem or enable scripted EPUB content.

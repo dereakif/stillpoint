@@ -297,10 +297,7 @@ test('pauses at a chapter boundary and shows the next chapter before continuing'
     'style',
     /width: 50%/
   );
-  await expect(page.getByTestId('chapter-progress')).toHaveAttribute(
-    'style',
-    /width: 100%/
-  );
+
   await expect(page.getByTestId('chapter-progress-status')).toContainText(
     'One · 100%'
   );
@@ -325,10 +322,6 @@ test('pauses at a chapter boundary and shows the next chapter before continuing'
   await expect(page.getByTestId('current-word')).toHaveText('Two');
   await expect(page.getByTestId('chapter-progress-status')).toContainText(
     'Two · 50%'
-  );
-  await expect(page.getByTestId('chapter-progress')).toHaveAttribute(
-    'style',
-    /width: 50%/
   );
 });
 

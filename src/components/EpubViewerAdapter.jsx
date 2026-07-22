@@ -7,6 +7,7 @@ import {
 } from 'react';
 import { EpubViewer } from 'react-epub-viewer';
 import { DEFAULT_EPUB_READER_SETTINGS } from '../storage/epubReaderSettings';
+import { createBoundedEpubSession } from '../epub/boundedSession';
 import {
   caretPositionFromPoint,
   findWordAtOffset,
@@ -40,6 +41,8 @@ const applyTypography = (rendition, settings) => {
 };
 
 const clampPercentage = (value) => Math.min(1, Math.max(0, value));
+const RETURN_MARKER_DURATION = 1800;
+const REDUCED_RETURN_MARKER_DURATION = 500;
 
 const EpubViewerAdapter = forwardRef(
   (
@@ -47,10 +50,13 @@ const EpubViewerAdapter = forwardRef(
       file,
       initialCfi,
       onBookInfoChange,
+      onInitialLocationRestored,
       onLocationChange,
       onPageChange,
       onTocChange,
       onWordClick,
+      reduceMotion = false,
+      returnCfi,
       settings = DEFAULT_EPUB_READER_SETTINGS,
     },
     ref
@@ -61,6 +67,10 @@ const EpubViewerAdapter = forwardRef(
     const contentHookRef = useRef(null);
     const unloadedHookRef = useRef(null);
     const contentCleanupRef = useRef(new Map());
+    const restoringInitialCfiRef = useRef(false);
+    const initialRestoreKeyRef = useRef(null);
+    const returnMarkerTimerRef = useRef(null);
+    const returnMarkerRef = useRef(null);
     const onLocationChangeRef = useRef(onLocationChange);
     const onPageChangeRef = useRef(onPageChange);
     const onWordClickRef = useRef(onWordClick);
@@ -105,6 +115,36 @@ const EpubViewerAdapter = forwardRef(
       contentCleanupRef.current.clear();
     };
 
+    const clearReturnMarker = () => {
+      window.clearTimeout(returnMarkerTimerRef.current);
+      returnMarkerTimerRef.current = null;
+      const marker = returnMarkerRef.current;
+      if (!marker) return;
+      marker.rendition.annotations.remove(marker.cfi, 'highlight');
+      returnMarkerRef.current = null;
+    };
+
+    const showReturnMarker = (rendition, cfi) => {
+      if (!cfi || !rendition?.annotations) return;
+      clearReturnMarker();
+      rendition.annotations.highlight(
+        cfi,
+        { stillpointReturnPosition: true },
+        undefined,
+        'stillpoint-return-position',
+        {
+          fill: 'currentColor',
+          'fill-opacity': reduceMotion ? '0.18' : '0.26',
+          'mix-blend-mode': 'multiply',
+        }
+      );
+      returnMarkerRef.current = { rendition, cfi };
+      returnMarkerTimerRef.current = window.setTimeout(
+        clearReturnMarker,
+        reduceMotion ? REDUCED_RETURN_MARKER_DURATION : RETURN_MARKER_DURATION
+      );
+    };
+
     const detachRenditionHooks = (rendition) => {
       if (!rendition) return;
       if (relocatedHandlerRef.current) {
@@ -121,6 +161,7 @@ const EpubViewerAdapter = forwardRef(
 
     useEffect(
       () => () => {
+        clearReturnMarker();
         detachRenditionHooks(renditionRef.current);
       },
       []
@@ -128,18 +169,21 @@ const EpubViewerAdapter = forwardRef(
 
     const handleRenditionChanged = (rendition) => {
       detachRenditionHooks(renditionRef.current);
+      restoringInitialCfiRef.current = Boolean(initialCfi);
 
       const handleRelocated = (location) => {
         const cfi = location?.start?.cfi;
         const percentage = Number(location?.start?.percentage);
         if (!cfi) return;
 
-        onLocationChangeRef.current?.({
-          cfi,
-          percentage: Number.isFinite(percentage)
-            ? clampPercentage(percentage)
-            : 0,
-        });
+        if (!restoringInitialCfiRef.current) {
+          onLocationChangeRef.current?.({
+            cfi,
+            percentage: Number.isFinite(percentage)
+              ? clampPercentage(percentage)
+              : 0,
+          });
+        }
 
         const displayedPage = Number(location?.start?.displayed?.page);
         const displayedTotal = Number(location?.start?.displayed?.total);
@@ -209,13 +253,29 @@ const EpubViewerAdapter = forwardRef(
             ? rendition.book.navigation.get(section.href)
             : null;
 
+          const sectionHref = section?.href || null;
+          const chapterLabel = navigationItem?.label?.trim() || null;
+          const session = createBoundedEpubSession(
+            contents,
+            caret.node,
+            caret.offset,
+            word,
+            {
+              title: chapterLabel || 'EPUB excerpt',
+              sectionHref,
+              sourceCfi: cfiRange,
+            }
+          );
+          if (!session) return;
+
           onWordClickRef.current?.({
             text: word.text,
             cfiRange,
-            sectionHref: section?.href || null,
-            chapterLabel: navigationItem?.label?.trim() || null,
+            sectionHref,
+            chapterLabel,
             startOffset: word.start,
             endOffset: word.end,
+            session,
           });
         };
 
@@ -241,8 +301,19 @@ const EpubViewerAdapter = forwardRef(
       rendition.hooks.content.register(attachContentListener);
       rendition.hooks.unloaded.register(detachContentListener);
 
-      if (initialCfi) rendition.display(initialCfi);
+      if (initialCfi) {
+        rendition.display(initialCfi).finally(() => {
+          restoringInitialCfiRef.current = false;
+          if (returnCfi === initialCfi) showReturnMarker(rendition, returnCfi);
+          onInitialLocationRestored?.(initialCfi);
+        });
+      }
     };
+
+    if (initialRestoreKeyRef.current !== bookUrl) {
+      initialRestoreKeyRef.current = bookUrl;
+      restoringInitialCfiRef.current = Boolean(bookUrl && initialCfi);
+    }
 
     if (!bookUrl) {
       return (
@@ -295,6 +366,7 @@ const EpubViewerAdapter = forwardRef(
             rendtionChanged={handleRenditionChanged}
             tocChanged={(toc) => onTocChange?.(toc)}
             pageChanged={(page) => {
+              if (restoringInitialCfiRef.current) return;
               onLocationChangeRef.current?.({
                 cfi: page.startCfi,
                 percentage:

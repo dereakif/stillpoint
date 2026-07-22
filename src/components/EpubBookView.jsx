@@ -25,19 +25,23 @@ const initialPageInfo = (book) => ({
 const EpubBookView = ({
   book,
   onBookInfoChange,
+  onInitialLocationRestored,
   onLibrary,
   onLocationChange,
+  onWordClick,
+  reduceMotion = false,
+  returnCfi = null,
 }) => {
   const viewerRef = useRef(null);
   const contentsButtonRef = useRef(null);
   const contentsDialogRef = useRef(null);
   const settingsButtonRef = useRef(null);
+  const nextPageButtonRef = useRef(null);
   const [toc, setToc] = useState([]);
   const [isContentsOpen, setIsContentsOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [pageInfo, setPageInfo] = useState(() => initialPageInfo(book));
   const [readerSettings, setReaderSettings] = useState(loadEpubReaderSettings);
-  const [clickedWord, setClickedWord] = useState(null);
 
   const closeContents = useCallback(() => {
     setIsContentsOpen(false);
@@ -52,6 +56,15 @@ const EpubBookView = ({
   const updateReaderSettings = (settings) => {
     setReaderSettings(saveEpubReaderSettings(settings));
   };
+
+  const handleInitialLocationRestored = useCallback(
+    (cfi) => {
+      onInitialLocationRestored?.(cfi);
+      if (returnCfi !== cfi) return;
+      window.requestAnimationFrame(() => nextPageButtonRef.current?.focus());
+    },
+    [onInitialLocationRestored, returnCfi]
+  );
 
   useEffect(() => {
     if (!isContentsOpen) return undefined;
@@ -155,11 +168,14 @@ const EpubBookView = ({
           file={book.source.file}
           initialCfi={book.reading?.cfi}
           onBookInfoChange={onBookInfoChange}
+          onInitialLocationRestored={handleInitialLocationRestored}
           onLocationChange={onLocationChange}
           onPageChange={setPageInfo}
+          reduceMotion={reduceMotion}
+          returnCfi={returnCfi}
           settings={readerSettings}
           onTocChange={setToc}
-          onWordClick={setClickedWord}
+          onWordClick={onWordClick}
         />
       </div>
 
@@ -187,6 +203,7 @@ const EpubBookView = ({
           </p>
         </div>
         <button
+          ref={nextPageButtonRef}
           type="button"
           className="btn btn-ghost btn-sm"
           aria-label="Next page"
@@ -196,42 +213,6 @@ const EpubBookView = ({
           <ChevronRight className="size-4" />
         </button>
       </nav>
-
-      {clickedWord && (
-        <aside
-          role="status"
-          aria-label="Clicked word details"
-          data-testid="clicked-word-details"
-          className="fixed bottom-18 right-3 z-40 w-[min(24rem,calc(100vw-1.5rem))] rounded-xl border border-base-300 bg-base-100/95 p-4 shadow-xl backdrop-blur-md"
-        >
-          <div className="flex items-start gap-3">
-            <div className="min-w-0 flex-1">
-              <p className="text-xs font-semibold uppercase tracking-wider text-primary">
-                Word detected
-              </p>
-              <p className="mt-1 truncate text-lg font-semibold">
-                {clickedWord.text}
-              </p>
-              <p className="mt-1 truncate text-xs text-base-content/55">
-                {clickedWord.chapterLabel ||
-                  clickedWord.sectionHref ||
-                  'Current section'}
-              </p>
-            </div>
-            <button
-              type="button"
-              className="btn btn-circle btn-ghost btn-xs"
-              aria-label="Close clicked word details"
-              onClick={() => setClickedWord(null)}
-            >
-              <X className="size-3.5" />
-            </button>
-          </div>
-          <code className="mt-3 block max-h-20 overflow-auto rounded-lg bg-base-200 p-2 text-[0.65rem] leading-4 text-base-content/65">
-            {clickedWord.cfiRange}
-          </code>
-        </aside>
-      )}
 
       {isSettingsOpen && (
         <EpubReaderSettings

@@ -6,36 +6,41 @@ const openLibraryFromEmptyEditor = async (page) => {
   await expect(page.getByRole('heading', { name: 'Library' })).toBeVisible();
 };
 
-const clickIframeWord = (page, word) =>
-  page
-    .frameLocator('iframe')
-    .locator('body')
-    .evaluate((body, targetWord) => {
-      const document = body.ownerDocument;
-      const window = document.defaultView;
-      const walker = document.createTreeWalker(
-        body,
-        window.NodeFilter.SHOW_TEXT
-      );
-      let node = walker.nextNode();
-      while (node && !node.textContent.includes(targetWord)) {
-        node = walker.nextNode();
-      }
-      if (!node) throw new Error(`Word not found: ${targetWord}`);
+const clickIframeWord = async (page, word) => {
+  try {
+    await page
+      .frameLocator('iframe')
+      .locator('body')
+      .evaluate((body, targetWord) => {
+        const document = body.ownerDocument;
+        const window = document.defaultView;
+        const walker = document.createTreeWalker(
+          body,
+          window.NodeFilter.SHOW_TEXT
+        );
+        let node = walker.nextNode();
+        while (node && !node.textContent.includes(targetWord)) {
+          node = walker.nextNode();
+        }
+        if (!node) throw new Error(`Word not found: ${targetWord}`);
 
-      const start = node.textContent.indexOf(targetWord);
-      const range = document.createRange();
-      range.setStart(node, start);
-      range.setEnd(node, start + targetWord.length);
-      const rectangle = range.getBoundingClientRect();
-      node.parentElement.dispatchEvent(
-        new window.MouseEvent('click', {
-          bubbles: true,
-          clientX: rectangle.left + rectangle.width / 2,
-          clientY: rectangle.top + rectangle.height / 2,
-        })
-      );
-    }, word);
+        const start = node.textContent.indexOf(targetWord);
+        const range = document.createRange();
+        range.setStart(node, start);
+        range.setEnd(node, start + targetWord.length);
+        const rectangle = range.getBoundingClientRect();
+        node.parentElement.dispatchEvent(
+          new window.MouseEvent('click', {
+            bubbles: true,
+            clientX: rectangle.left + rectangle.width / 2,
+            clientY: rectangle.top + rectangle.height / 2,
+          })
+        );
+      }, word);
+  } catch (error) {
+    if (!String(error?.message).includes('Frame was detached')) throw error;
+  }
+};
 
 const getStoredEpubSummary = (page) =>
   page.evaluate(
@@ -257,7 +262,7 @@ test('applies and restores EPUB reader settings', async ({ page }) => {
   );
 });
 
-test('detects an exact clicked EPUB word and ignores selections and links', async ({
+test('starts EPUB immersion at a clicked word and ignores selections and links', async ({
   page,
 }) => {
   await openLibraryFromEmptyEditor(page);
@@ -269,12 +274,24 @@ test('detects an exact clicked EPUB word and ignores selections and links', asyn
   ).toBeVisible({ timeout: 15_000 });
 
   await clickIframeWord(page, 'representative');
-  const details = page.getByTestId('clicked-word-details');
-  await expect(details).toContainText('representative');
-  await expect(details.locator('code')).toHaveText(/^epubcfi\(.+,.+\)$/);
-  await details
-    .getByRole('button', { name: 'Close clicked word details' })
-    .click();
+  const immersiveMode = page.getByRole('region', {
+    name: 'Immersive reading mode',
+  });
+  await expect(immersiveMode).toBeVisible();
+  await expect(page.getByTestId('current-word')).toHaveText('representative');
+  await expect(page.locator('[aria-label$=" reader"]')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Exit' }).click();
+  await expect(immersiveMode).toHaveCount(0, { timeout: 5_000 });
+  await expect(page.locator('[aria-label$=" reader"]')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Next page' })).toBeFocused();
+  const returnMarker = page.locator('[ref="stillpoint-return-position"]');
+  await expect(returnMarker).toBeVisible();
+  await expect(returnMarker).toHaveCount(0, { timeout: 3_000 });
+  await expect
+    .poll(() => getStoredEpubSummary(page).then((record) => record?.cfi), {
+      timeout: 15_000,
+    })
+    .toMatch(/^epubcfi\(.+,.+\)$/);
 
   await page
     .frameLocator('iframe')
@@ -300,7 +317,7 @@ test('detects an exact clicked EPUB word and ignores selections and links', asyn
         })
       );
     });
-  await expect(details).toHaveCount(0);
+  await expect(immersiveMode).toHaveCount(0);
 
   await page
     .frameLocator('iframe')
@@ -321,7 +338,7 @@ test('detects an exact clicked EPUB word and ignores selections and links', asyn
         })
       );
     });
-  await expect(details).toHaveCount(0);
+  await expect(immersiveMode).toHaveCount(0);
 
   await page.getByRole('button', { name: 'Open reader settings' }).click();
   const settings = page.getByRole('dialog', { name: 'Reader settings' });
@@ -332,6 +349,29 @@ test('detects an exact clicked EPUB word and ignores selections and links', asyn
   ).toBeVisible({ timeout: 15_000 });
 
   await clickIframeWord(page, 'representative');
-  await expect(details).toContainText('representative');
-  await expect(details.locator('code')).toHaveText(/^epubcfi\(.+,.+\)$/);
+  await expect(immersiveMode).toBeVisible();
+  await expect(page.getByTestId('current-word')).toHaveText('representative');
+  await expect(page.locator('[aria-label$=" reader"]')).toHaveCount(0);
+
+  const textRecordCount = await page.evaluate(
+    () =>
+      new Promise((resolve, reject) => {
+        const request = indexedDB.open('stillpoint-library', 1);
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => {
+          const database = request.result;
+          const transaction = database.transaction('documents', 'readonly');
+          const recordsRequest = transaction.objectStore('documents').getAll();
+          recordsRequest.onerror = () => reject(recordsRequest.error);
+          recordsRequest.onsuccess = () => {
+            resolve(
+              recordsRequest.result.filter((record) => record.kind === 'text')
+                .length
+            );
+            database.close();
+          };
+        };
+      })
+  );
+  expect(textRecordCount).toBe(0);
 });

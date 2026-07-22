@@ -137,6 +137,8 @@ function App() {
   );
   const [libraryDocuments, setLibraryDocuments] = useState([]);
   const [activeEpub, setActiveEpub] = useState(null);
+  const [epubImmersiveSession, setEpubImmersiveSession] = useState(null);
+  const [epubReadingPosition, setEpubReadingPosition] = useState(null);
   const [storageError, setStorageError] = useState(null);
   const returnSequenceRef = useRef(0);
   const exitTimerRef = useRef(null);
@@ -144,9 +146,13 @@ function App() {
   const epubWriteTimerRef = useRef(null);
   const pendingEpubReadingRef = useRef(null);
   const epubMetadataWriteRef = useRef(null);
+  const epubReturnCfiRef = useRef(null);
   const isExitingRef = useRef(false);
 
   const text = document.source.text;
+  const reduceMotion =
+    appearanceSettings.reducedEffects ||
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   const refreshLibrary = async () => {
     const documents = await listDocuments();
@@ -572,6 +578,13 @@ function App() {
 
   const updateActiveEpubLocation = (reading) => {
     if (!activeEpub) return;
+    if (
+      epubReturnCfiRef.current &&
+      reading.cfi &&
+      reading.cfi !== epubReturnCfiRef.current
+    ) {
+      return;
+    }
 
     pendingEpubReadingRef.current = { id: activeEpub.id, reading };
     setActiveEpub((current) =>
@@ -588,6 +601,60 @@ function App() {
       persistPendingEpubReading,
       EPUB_WRITE_DEBOUNCE
     );
+  };
+
+  const startEpubReading = ({ cfiRange, session }) => {
+    if (!activeEpub || !session?.document?.tokens.length) return;
+    epubReturnCfiRef.current = null;
+
+    window.clearTimeout(exitTimerRef.current);
+    isExitingRef.current = false;
+    updateActiveEpubLocation({ cfi: cfiRange });
+    setEpubImmersiveSession(session);
+    setEpubReadingPosition(session.initialPosition);
+    dismissEntryHint();
+    setReadingSessionId((sessionId) => sessionId + 1);
+    setMode('epub-immersive');
+  };
+
+  const exitEpubReading = (position) => {
+    if (isExitingRef.current || !epubImmersiveSession) return;
+    isExitingRef.current = true;
+
+    const returnPosition = position ?? epubReadingPosition;
+    if (returnPosition) {
+      setEpubReadingPosition(returnPosition);
+      const tokenIndex = positionToTokenIndex(
+        epubImmersiveSession.document.tokens,
+        returnPosition
+      );
+      const returnCfi =
+        epubImmersiveSession.tokenCfis[tokenIndex] ??
+        epubImmersiveSession.sourceCfi;
+      if (returnCfi) {
+        epubReturnCfiRef.current = returnCfi;
+        updateActiveEpubLocation({ cfi: returnCfi });
+      }
+    }
+
+    setMode('epub-returning');
+    exitTimerRef.current = window.setTimeout(
+      () => {
+        exitTimerRef.current = null;
+        isExitingRef.current = false;
+        setMode('epub');
+        setEpubImmersiveSession(null);
+        setEpubReadingPosition(null);
+      },
+      reduceMotion ? 0 : MODE_TRANSITION_DURATION
+    );
+  };
+
+  const finishEpubLocationRestore = (cfi) => {
+    if (epubReturnCfiRef.current !== cfi) return;
+    window.setTimeout(() => {
+      if (epubReturnCfiRef.current === cfi) epubReturnCfiRef.current = null;
+    }, 200);
   };
 
   const updateActiveEpubMetadata = async (bookInfo) => {
@@ -699,7 +766,7 @@ function App() {
         />
       )}
 
-      {mode === 'epub' && activeEpub && (
+      {(mode === 'epub' || mode === 'epub-returning') && activeEpub && (
         <Suspense
           fallback={
             <section
@@ -714,7 +781,13 @@ function App() {
             book={activeEpub}
             onBookInfoChange={updateActiveEpubMetadata}
             onLibrary={closeEpub}
+            onInitialLocationRestored={finishEpubLocationRestore}
             onLocationChange={updateActiveEpubLocation}
+            onWordClick={mode === 'epub' ? startEpubReading : undefined}
+            reduceMotion={reduceMotion}
+            returnCfi={
+              mode === 'epub-returning' ? epubReturnCfiRef.current : null
+            }
           />
         </Suspense>
       )}
@@ -827,6 +900,25 @@ function App() {
           onExit={exitReading}
         />
       )}
+
+      {(mode === 'epub-immersive' || mode === 'epub-returning') &&
+        epubImmersiveSession && (
+          <RSVPReader
+            key={`epub-${readingSessionId}`}
+            document={epubImmersiveSession.document}
+            readingPosition={epubReadingPosition}
+            onReadingPositionChange={setEpubReadingPosition}
+            initialWpm={wpm}
+            readingSettings={readingSettings}
+            appearanceSettings={appearanceSettings}
+            onWpmChange={updateReadingWpm}
+            completedChapterIds={[]}
+            onReadingActivity={recordSessionActivity}
+            chapterCompletionBehavior="return"
+            isExiting={mode === 'epub-returning'}
+            onExit={exitEpubReading}
+          />
+        )}
     </main>
   );
 }

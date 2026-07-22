@@ -19,7 +19,6 @@ const WordDisplay = ({
   const pivotRef = useRef(null);
   const afterRef = useRef(null);
   const progressRef = useRef(null);
-  const chapterProgressRef = useRef(null);
   const chapterLabelRef = useRef(null);
 
   useEffect(() => {
@@ -77,9 +76,6 @@ const WordDisplay = ({
     const handleChapterProgress = (chapter) => {
       if (!chapter) return;
 
-      if (chapterProgressRef.current) {
-        chapterProgressRef.current.style.width = `${chapter.progress * 100}%`;
-      }
       if (chapterLabelRef.current) {
         const chapterTitle = chapter.title || `Section ${chapter.number}`;
         chapterLabelRef.current.textContent = `${chapterTitle} · ${Math.round(
@@ -108,18 +104,11 @@ const WordDisplay = ({
         {showChapterProgress && (
           <div
             data-testid="chapter-progress-status"
-            className="mb-3 px-1 text-xs text-base-content/55"
+            className="mb-1 px-1 text-xs text-base-content/55"
           >
             <div className="mb-1 flex items-center justify-between gap-4">
               <span>Chapter progress</span>
               <span ref={chapterLabelRef}>Section 1 · 0%</span>
-            </div>
-            <div className="h-1 overflow-hidden rounded-full bg-base-300/70">
-              <div
-                ref={chapterProgressRef}
-                data-testid="chapter-progress"
-                className="h-full w-0 bg-primary/55 transition-[width] duration-200 ease-linear motion-reduce:transition-none"
-              />
             </div>
           </div>
         )}
