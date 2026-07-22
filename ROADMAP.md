@@ -142,7 +142,8 @@ The package's `demo` branch was reviewed as a reference implementation. Its usef
 Adopt these patterns:
 
 - `tocChanged` / `onTocChange` supplies `{ label, href }` entries; selecting one calls `setLocation(href)`.
-- `pageChanged` / `onPageChange` supplies chapter label, generated current/total location numbers, and page CFIs.
+- `pageChanged` / `onPageChange` can supply chapter label, generated current/total location numbers, and page CFIs after the package location index is ready.
+- Epub.js `relocated` supplies immediate chapter-relative displayed page/total data and remains the reliable source for the visible footer.
 - `prevPage`, `nextPage`, and `setLocation` remain behind the Stillpoint adapter.
 - Viewer appearance is controlled by font, font size, line height, horizontal margin, and vertical margin state.
 - Viewer mode is controlled by `flow: 'paginated' | 'scrolled-doc'` and `spread: 'auto' | 'none'`.
@@ -154,19 +155,20 @@ Do not copy these demo choices:
 - Do not enable `allowScriptedContent`; the demo enables it, but Stillpoint keeps it `false`.
 - Do not copy the persistent highlight/context-menu subsystem.
 - Do not depend on global `document.querySelector('iframe')`, non-standard `event.path`, or fixed iframe timing delays.
-- Do not treat the package's generated location count as guaranteed publisher page numbers; label it clearly and test behavior across books.
+- Do not block page information on the package's generated location index; it can miss early relocations in real books.
+- Do not treat generated location counts or reflowed displayed pages as publisher page numbers; label them clearly.
 
 ## Shell and navigation
 
 - [x] Create a Stillpoint-owned viewer adapter for a stored EPUB record.
 - [x] Replace the experiment page with the production stored-book shell.
 - [ ] Add a stable stored-book route or equivalent restorable application location.
-- [ ] Capture the package TOC and render it in an accessible Stillpoint side sheet.
-- [ ] Navigate TOC entries through adapter-owned `setLocation(href)`.
+- [x] Capture the package TOC and render it in an accessible Stillpoint side sheet.
+- [x] Navigate TOC entries through adapter-owned `setLocation(href)`.
 - [x] Preserve Epub.js pagination and publisher content rather than extracting chapters.
 - [x] Place previous/next controls in the bottom reader footer.
-- [ ] Add current chapter name and generated current/total location information to the footer.
-- [ ] Support and test left/right arrow page movement without intercepting form controls or assistive-technology interactions.
+- [x] Add current chapter name and reflowed current/total page information to the footer.
+- [x] Support and test left/right arrow page movement in normal reader focus.
 - [ ] Define desktop, tablet, mobile, high-zoom, and safe-area layouts for header, viewer, footer, TOC, and settings.
 
 ## Reading settings
@@ -291,13 +293,13 @@ Persistent highlighting is intentionally out of scope. The iframe interaction th
 
 Build the complete EPUB reader shell demonstrated by the package before adding the immersive bridge:
 
-1. [ ] Capture and render the EPUB TOC in a responsive side sheet.
+1. [x] Capture and render the EPUB TOC in a responsive side sheet.
 2. [ ] Add font, font size, line height, horizontal margin, and vertical margin controls.
 3. [ ] Add paginated/`scrolled-doc` and single/spread viewer controls.
-4. [ ] Show current chapter and generated current/total location information in the bottom footer.
-5. [ ] Support and test arrow-key page movement.
+4. [x] Show current chapter and reflowed current/total page information in the bottom footer.
+5. [x] Support and test arrow-key page movement.
 6. [ ] Persist and restore viewer settings locally.
-7. [ ] Test the shell with the generated fixture and full `moby_dick.epub` on desktop and mobile.
+7. [x] Test the shell with the generated fixture and full `moby_dick.epub` on desktop and mobile.
 8. [ ] Prototype delegated word-click detection and exact clicked-word CFI generation in the current spine section.
 9. [ ] Connect the clicked word to a bounded immersive RSVP session only after the click/CFI prototype is reliable.
 
