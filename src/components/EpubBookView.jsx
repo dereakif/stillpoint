@@ -4,9 +4,16 @@ import {
   ChevronLeft,
   ChevronRight,
   List,
+  Settings,
   X,
 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  DEFAULT_EPUB_READER_SETTINGS,
+  loadEpubReaderSettings,
+  saveEpubReaderSettings,
+} from '../storage/epubReaderSettings';
+import EpubReaderSettings from './EpubReaderSettings';
 import EpubViewerAdapter from './EpubViewerAdapter';
 
 const initialPageInfo = (book) => ({
@@ -24,14 +31,26 @@ const EpubBookView = ({
   const viewerRef = useRef(null);
   const contentsButtonRef = useRef(null);
   const contentsDialogRef = useRef(null);
+  const settingsButtonRef = useRef(null);
   const [toc, setToc] = useState([]);
   const [isContentsOpen, setIsContentsOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [pageInfo, setPageInfo] = useState(() => initialPageInfo(book));
+  const [readerSettings, setReaderSettings] = useState(loadEpubReaderSettings);
 
   const closeContents = useCallback(() => {
     setIsContentsOpen(false);
     window.requestAnimationFrame(() => contentsButtonRef.current?.focus());
   }, []);
+
+  const closeSettings = useCallback(() => {
+    setIsSettingsOpen(false);
+    window.requestAnimationFrame(() => settingsButtonRef.current?.focus());
+  }, []);
+
+  const updateReaderSettings = (settings) => {
+    setReaderSettings(saveEpubReaderSettings(settings));
+  };
 
   useEffect(() => {
     if (!isContentsOpen) return undefined;
@@ -90,10 +109,27 @@ const EpubBookView = ({
             className="btn btn-ghost btn-sm"
             aria-label="Open contents"
             aria-expanded={isContentsOpen}
-            onClick={() => setIsContentsOpen(true)}
+            onClick={() => {
+              setIsSettingsOpen(false);
+              setIsContentsOpen(true);
+            }}
           >
             <List className="size-4" />
             <span className="hidden sm:inline">Contents</span>
+          </button>
+          <button
+            ref={settingsButtonRef}
+            type="button"
+            className="btn btn-ghost btn-sm"
+            aria-label="Open reader settings"
+            aria-expanded={isSettingsOpen}
+            onClick={() => {
+              setIsContentsOpen(false);
+              setIsSettingsOpen(true);
+            }}
+          >
+            <Settings className="size-4" />
+            <span className="hidden sm:inline">Settings</span>
           </button>
           <BookOpen className="hidden size-5 text-primary md:block" />
           <div className="min-w-0 flex-1">
@@ -120,6 +156,7 @@ const EpubBookView = ({
           onBookInfoChange={onBookInfoChange}
           onLocationChange={onLocationChange}
           onPageChange={setPageInfo}
+          settings={readerSettings}
           onTocChange={setToc}
         />
       </div>
@@ -157,6 +194,15 @@ const EpubBookView = ({
           <ChevronRight className="size-4" />
         </button>
       </nav>
+
+      {isSettingsOpen && (
+        <EpubReaderSettings
+          settings={readerSettings}
+          onChange={updateReaderSettings}
+          onClose={closeSettings}
+          onReset={() => updateReaderSettings(DEFAULT_EPUB_READER_SETTINGS)}
+        />
+      )}
 
       {isContentsOpen && (
         <div className="fixed inset-0 z-50">

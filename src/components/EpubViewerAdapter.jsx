@@ -6,6 +6,34 @@ import {
   useState,
 } from 'react';
 import { EpubViewer } from 'react-epub-viewer';
+import { DEFAULT_EPUB_READER_SETTINGS } from '../storage/epubReaderSettings';
+
+const FONT_STACKS = {
+  serif: "Georgia, 'Times New Roman', serif",
+  sans: 'Arial, Helvetica, sans-serif',
+  system:
+    "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+};
+
+const applyTypography = (rendition, settings) => {
+  if (!rendition) return;
+
+  const body = {
+    'font-size': `${settings.fontSize}px !important`,
+    'line-height': `${settings.lineHeight} !important`,
+  };
+  const fontFamily = FONT_STACKS[settings.fontFamily];
+  if (fontFamily) body['font-family'] = `${fontFamily} !important`;
+
+  rendition.themes.register('stillpoint-reader', {
+    body,
+    p: {
+      'font-size': 'inherit !important',
+      'line-height': 'inherit !important',
+    },
+  });
+  rendition.themes.select('stillpoint-reader');
+};
 
 const clampPercentage = (value) => Math.min(1, Math.max(0, value));
 
@@ -18,6 +46,7 @@ const EpubViewerAdapter = forwardRef(
       onLocationChange,
       onPageChange,
       onTocChange,
+      settings = DEFAULT_EPUB_READER_SETTINGS,
     },
     ref
   ) => {
@@ -56,6 +85,10 @@ const EpubViewerAdapter = forwardRef(
         window.setTimeout(() => URL.revokeObjectURL(objectUrl), 0);
       };
     }, [file]);
+
+    useEffect(() => {
+      applyTypography(renditionRef.current, settings);
+    }, [settings]);
 
     useEffect(
       () => () => {
@@ -104,6 +137,7 @@ const EpubViewerAdapter = forwardRef(
 
       renditionRef.current = rendition;
       relocatedHandlerRef.current = handleRelocated;
+      applyTypography(rendition, settings);
       rendition.on('relocated', handleRelocated);
 
       if (initialCfi) rendition.display(initialCfi);
@@ -118,51 +152,66 @@ const EpubViewerAdapter = forwardRef(
       );
     }
 
+    const verticalMargin =
+      settings.flow === 'paginated' ? settings.marginVertical : 0;
+
     return (
-      <EpubViewer
-        key={bookUrl}
-        ref={viewerRef}
-        url={bookUrl}
-        epubFileOptions={{ openAs: 'epub' }}
-        epubOptions={{
-          allowScriptedContent: false,
-          flow: 'paginated',
-          resizeOnOrientationChange: true,
-          spread: 'none',
+      <div
+        data-testid="epub-viewer-frame"
+        data-flow={settings.flow}
+        data-spread={settings.spread}
+        className="flex h-full min-h-0 bg-white"
+        style={{
+          padding: `${verticalMargin}px ${settings.marginHorizontal}px`,
         }}
-        style={{ height: '100%', width: '100%' }}
-        bookChanged={(book) => {
-          book.loaded.metadata
-            .then((metadata) => {
-              onBookInfoChange?.({
-                title: metadata.title,
-                author: metadata.creator,
-                language: metadata.language,
+      >
+        <div className="min-h-0 min-w-0 flex-1">
+          <EpubViewer
+            key={bookUrl}
+            ref={viewerRef}
+            url={bookUrl}
+            epubFileOptions={{ openAs: 'epub' }}
+            epubOptions={{
+              allowScriptedContent: false,
+              flow: settings.flow,
+              resizeOnOrientationChange: true,
+              spread: settings.spread,
+            }}
+            style={{ height: '100%', width: '100%' }}
+            bookChanged={(book) => {
+              book.loaded.metadata
+                .then((metadata) => {
+                  onBookInfoChange?.({
+                    title: metadata.title,
+                    author: metadata.creator,
+                    language: metadata.language,
+                  });
+                })
+                .catch(() => {
+                  // Metadata is optional; rendering can continue without it.
+                });
+            }}
+            rendtionChanged={handleRenditionChanged}
+            tocChanged={(toc) => onTocChange?.(toc)}
+            pageChanged={(page) => {
+              onLocationChangeRef.current?.({
+                cfi: page.startCfi,
+                percentage:
+                  page.totalPage > 0
+                    ? clampPercentage(page.currentPage / page.totalPage)
+                    : 0,
+                chapterLabel: page.chapterName || null,
               });
-            })
-            .catch(() => {
-              // Metadata is optional; rendering can continue without it.
-            });
-        }}
-        rendtionChanged={handleRenditionChanged}
-        tocChanged={(toc) => onTocChange?.(toc)}
-        pageChanged={(page) => {
-          onLocationChangeRef.current?.({
-            cfi: page.startCfi,
-            percentage:
-              page.totalPage > 0
-                ? clampPercentage(page.currentPage / page.totalPage)
-                : 0,
-            chapterLabel: page.chapterName || null,
-          });
-        }}
-        loadingView={
-          <div className="flex h-full items-center justify-center gap-3 bg-white text-neutral-700">
-            <span className="loading loading-spinner loading-md" />
-            Opening EPUB…
-          </div>
-        }
-      />
+            }}
+            loadingView={
+              <div className="flex h-full items-center justify-center gap-3 bg-white text-neutral-700">
+                <span className="loading loading-spinner loading-md" />
+                Opening EPUB…
+              </div>
+            }
+          />
+        </div>
+      </div>
     );
   }
 );

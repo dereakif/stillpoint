@@ -129,3 +129,99 @@ test('stores, reopens, exports, and deletes an imported EPUB', async ({
     .click();
   await expect(page.getByText('No saved documents yet')).toBeVisible();
 });
+
+test('applies and restores EPUB reader settings', async ({ page }) => {
+  await openLibraryFromEmptyEditor(page);
+  await page
+    .getByLabel('Choose EPUB to import')
+    .setInputFiles('e2e/fixtures/minimal.epub');
+
+  await expect(
+    page.frameLocator('iframe').getByText(/Page 1 contains/)
+  ).toBeVisible({ timeout: 15_000 });
+  await page.getByRole('button', { name: 'Next page' }).click();
+  await expect
+    .poll(() => getStoredEpubSummary(page).then((record) => record?.cfi), {
+      timeout: 15_000,
+    })
+    .toMatch(/^epubcfi\(/);
+
+  const settingsButton = page.getByRole('button', {
+    name: 'Open reader settings',
+  });
+  await settingsButton.click();
+  const settings = page.getByRole('dialog', { name: 'Reader settings' });
+  await expect(settings).toBeVisible();
+
+  await settings.getByLabel('EPUB font').selectOption('sans');
+  await settings.getByRole('slider', { name: 'Font size' }).fill('24');
+  await settings.getByRole('slider', { name: 'Line height' }).fill('1.8');
+  await settings.getByRole('slider', { name: 'Horizontal margin' }).fill('32');
+  await settings.getByRole('slider', { name: 'Vertical margin' }).fill('20');
+  await settings.getByLabel('EPUB page spread').selectOption('auto');
+
+  const viewerFrame = page.getByTestId('epub-viewer-frame');
+  await expect(viewerFrame).toHaveCSS('padding-left', '32px');
+  await expect(viewerFrame).toHaveCSS('padding-top', '20px');
+  await expect(viewerFrame).toHaveAttribute('data-spread', 'auto');
+  await expect
+    .poll(() =>
+      page
+        .frameLocator('iframe')
+        .locator('body')
+        .evaluate((body) => {
+          const style = getComputedStyle(body);
+          return {
+            fontFamily: style.fontFamily,
+            fontSize: style.fontSize,
+            lineHeight: style.lineHeight,
+          };
+        })
+    )
+    .toEqual({
+      fontFamily: 'Arial, Helvetica, sans-serif',
+      fontSize: '24px',
+      lineHeight: '43.2px',
+    });
+
+  await settings.getByLabel('EPUB reading mode').selectOption('scrolled-doc');
+  await expect(viewerFrame).toHaveAttribute('data-flow', 'scrolled-doc');
+  await expect(viewerFrame).toHaveCSS('padding-top', '0px');
+  await expect(
+    settings.getByRole('slider', { name: 'Vertical margin' })
+  ).toBeDisabled();
+  await expect(settings.getByLabel('EPUB page spread')).toBeDisabled();
+
+  await page.keyboard.press('Escape');
+  await expect(settings).toHaveCount(0);
+  await expect(settingsButton).toBeFocused();
+
+  const persistedSettings = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem('stillpoint.epubReaderSettings'))
+  );
+  expect(persistedSettings).toMatchObject({
+    fontFamily: 'sans',
+    fontSize: 24,
+    lineHeight: 1.8,
+    marginHorizontal: 32,
+    marginVertical: 20,
+    flow: 'scrolled-doc',
+    spread: 'auto',
+  });
+  await expect
+    .poll(() => getStoredEpubSummary(page).then((record) => record?.cfi), {
+      timeout: 15_000,
+    })
+    .toMatch(/^epubcfi\(/);
+
+  await page.getByRole('button', { name: 'Library' }).click();
+  await page.reload();
+  await page.getByRole('button', { name: /^Stillpoint Test Book/ }).click();
+  await expect(viewerFrame).toHaveAttribute('data-flow', 'scrolled-doc');
+  await expect(viewerFrame).toHaveAttribute('data-spread', 'auto');
+  await settingsButton.click();
+  await expect(settings.getByLabel('EPUB font')).toHaveValue('sans');
+  await expect(settings.getByRole('slider', { name: 'Font size' })).toHaveValue(
+    '24'
+  );
+});

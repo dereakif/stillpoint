@@ -173,28 +173,28 @@ Do not copy these demo choices:
 
 ## Reading settings
 
-- [ ] Add a settings side sheet using the demo's control categories, restyled for Stillpoint.
-- [ ] Add publisher-original and readable fallback font choices.
-- [ ] Add font-size control with practical minimum and maximum values.
-- [ ] Add line-height control.
-- [ ] Add horizontal viewer margin control.
-- [ ] Add vertical viewer margin control for paginated mode.
-- [ ] Add paginated versus `scrolled-doc` flow control.
-- [ ] Add single-page versus automatic spread control where the viewport supports it.
-- [ ] Apply settings through the adapter/rendition without recreating or reparsing the book unnecessarily.
-- [ ] Persist viewer preferences locally and restore them before first visible layout where possible.
+- [x] Add a settings side sheet using the demo's control categories, restyled for Stillpoint.
+- [x] Add publisher-original and readable fallback font choices.
+- [x] Add font-size control with practical minimum and maximum values.
+- [x] Add line-height control.
+- [x] Add horizontal viewer margin control.
+- [x] Add vertical viewer margin control for paginated mode.
+- [x] Add paginated versus `scrolled-doc` flow control.
+- [x] Add single-page versus automatic spread control where the viewport supports it.
+- [x] Apply settings through the adapter/rendition without reparsing the EPUB file.
+- [x] Persist viewer preferences locally and restore them when the reader opens.
 
 ## Reliability
 
 - [ ] Add loading, malformed-book, unsupported-book, and recovery states.
 - [x] Keep the viewer package dynamically imported.
-- [ ] Confirm TOC, settings, flow changes, spread changes, page information, and keyboard navigation with generated and real-world EPUBs.
+- [x] Confirm TOC, settings, flow changes, spread changes, page information, and keyboard navigation with generated and real-world EPUBs.
 
 ## Completion criteria
 
 - [ ] Book mode feels like an EPUB reader rather than an extracted document editor.
 - [ ] TOC, settings, pagination/scrolling, current location, arrow keys, and position restoration work on desktop and mobile.
-- [ ] Viewer settings survive closing and reopening a book.
+- [x] Viewer settings survive closing and reopening a book.
 
 ---
 
@@ -294,11 +294,11 @@ Persistent highlighting is intentionally out of scope. The iframe interaction th
 Build the complete EPUB reader shell demonstrated by the package before adding the immersive bridge:
 
 1. [x] Capture and render the EPUB TOC in a responsive side sheet.
-2. [ ] Add font, font size, line height, horizontal margin, and vertical margin controls.
-3. [ ] Add paginated/`scrolled-doc` and single/spread viewer controls.
+2. [x] Add font, font size, line height, horizontal margin, and vertical margin controls.
+3. [x] Add paginated/`scrolled-doc` and single/spread viewer controls.
 4. [x] Show current chapter and reflowed current/total page information in the bottom footer.
 5. [x] Support and test arrow-key page movement.
-6. [ ] Persist and restore viewer settings locally.
+6. [x] Persist and restore viewer settings locally.
 7. [x] Test the shell with the generated fixture and full `moby_dick.epub` on desktop and mobile.
 8. [ ] Prototype delegated word-click detection and exact clicked-word CFI generation in the current spine section.
 9. [ ] Connect the clicked word to a bounded immersive RSVP session only after the click/CFI prototype is reliable.
