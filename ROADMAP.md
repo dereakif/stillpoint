@@ -206,16 +206,17 @@ Add Stillpoint features through Epub.js APIs rather than reparsing the full book
 
 Persistent highlighting is intentionally out of scope. The iframe interaction that the demo uses for mouse selection will instead become a Stillpoint-owned word activation bridge.
 
-- [ ] Register delegated click listeners through Epub.js rendition/content hooks for each loaded spine document.
-- [ ] Remove listeners when a rendition view unloads; do not poll for or globally query an iframe.
-- [ ] Ignore links, controls, images, empty areas, and clicks made while selecting text.
-- [ ] Resolve the click point to a text node and character offset with `caretPositionFromPoint` / `caretRangeFromPoint` fallbacks.
-- [ ] Expand the clicked offset to a word boundary with `Intl.Segmenter` where available and a Unicode-aware fallback.
-- [ ] Convert the clicked word range to an exact CFI range through the current Epub.js `Contents` object.
+- [x] Register delegated click listeners through Epub.js rendition/content hooks for each loaded spine document.
+- [x] Remove listeners when a rendition view unloads; do not poll for or globally query an iframe.
+- [x] Ignore links, controls, images, empty areas, and clicks made while selecting text.
+- [x] Resolve the click point to a text node and character offset with `caretPositionFromPoint` / `caretRangeFromPoint` fallbacks.
+- [x] Expand the clicked offset to a word boundary with `Intl.Segmenter` where available and a Unicode-aware fallback.
+- [x] Convert the clicked word range to an exact CFI range through the current Epub.js `Contents` object.
+- [x] Show temporary clicked-word/section/CFI diagnostic feedback without creating a highlight.
 - [ ] Extract only a bounded RSVP text window from the current spine section around that word.
 - [ ] Preserve token-to-CFI-range mappings for the bounded session instead of parsing or tokenizing the whole book.
 - [ ] Start immersive mode at the clicked word or nearest readable token.
-- [ ] Keep EPUB content completely absent behind active immersive mode.
+- [x] Keep EPUB content completely absent behind active immersive mode.
 - [ ] Provide a keyboard-accessible **Immerse from here** action for readers who cannot point to a word.
 - [ ] Verify clicks inside nested inline markup, punctuation, Unicode text, footnotes, and publisher-styled content.
 
@@ -300,7 +301,7 @@ Build the complete EPUB reader shell demonstrated by the package before adding t
 5. [x] Support and test arrow-key page movement.
 6. [x] Persist and restore viewer settings locally.
 7. [x] Test the shell with the generated fixture and full `moby_dick.epub` on desktop and mobile.
-8. [ ] Prototype delegated word-click detection and exact clicked-word CFI generation in the current spine section.
+8. [x] Prototype delegated word-click detection and exact clicked-word CFI generation in the current spine section.
 9. [ ] Connect the clicked word to a bounded immersive RSVP session only after the click/CFI prototype is reliable.
 
 Do not add custom EPUB chapter parsing. Do not copy the demo's highlight subsystem or enable scripted EPUB content.

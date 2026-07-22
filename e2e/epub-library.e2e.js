@@ -6,6 +6,37 @@ const openLibraryFromEmptyEditor = async (page) => {
   await expect(page.getByRole('heading', { name: 'Library' })).toBeVisible();
 };
 
+const clickIframeWord = (page, word) =>
+  page
+    .frameLocator('iframe')
+    .locator('body')
+    .evaluate((body, targetWord) => {
+      const document = body.ownerDocument;
+      const window = document.defaultView;
+      const walker = document.createTreeWalker(
+        body,
+        window.NodeFilter.SHOW_TEXT
+      );
+      let node = walker.nextNode();
+      while (node && !node.textContent.includes(targetWord)) {
+        node = walker.nextNode();
+      }
+      if (!node) throw new Error(`Word not found: ${targetWord}`);
+
+      const start = node.textContent.indexOf(targetWord);
+      const range = document.createRange();
+      range.setStart(node, start);
+      range.setEnd(node, start + targetWord.length);
+      const rectangle = range.getBoundingClientRect();
+      node.parentElement.dispatchEvent(
+        new window.MouseEvent('click', {
+          bubbles: true,
+          clientX: rectangle.left + rectangle.width / 2,
+          clientY: rectangle.top + rectangle.height / 2,
+        })
+      );
+    }, word);
+
 const getStoredEpubSummary = (page) =>
   page.evaluate(
     () =>
@@ -224,4 +255,83 @@ test('applies and restores EPUB reader settings', async ({ page }) => {
   await expect(settings.getByRole('slider', { name: 'Font size' })).toHaveValue(
     '24'
   );
+});
+
+test('detects an exact clicked EPUB word and ignores selections and links', async ({
+  page,
+}) => {
+  await openLibraryFromEmptyEditor(page);
+  await page
+    .getByLabel('Choose EPUB to import')
+    .setInputFiles('e2e/fixtures/minimal.epub');
+  await expect(
+    page.frameLocator('iframe').getByText(/Page 1 contains/)
+  ).toBeVisible({ timeout: 15_000 });
+
+  await clickIframeWord(page, 'representative');
+  const details = page.getByTestId('clicked-word-details');
+  await expect(details).toContainText('representative');
+  await expect(details.locator('code')).toHaveText(/^epubcfi\(.+,.+\)$/);
+  await details
+    .getByRole('button', { name: 'Close clicked word details' })
+    .click();
+
+  await page
+    .frameLocator('iframe')
+    .locator('body')
+    .evaluate((body) => {
+      const document = body.ownerDocument;
+      const window = document.defaultView;
+      const paragraph = body.querySelector('p');
+      const textNode = paragraph.firstChild;
+      const range = document.createRange();
+      range.setStart(textNode, 0);
+      range.setEnd(textNode, Math.min(12, textNode.textContent.length));
+      const selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+
+      const rectangle = range.getBoundingClientRect();
+      paragraph.dispatchEvent(
+        new window.MouseEvent('click', {
+          bubbles: true,
+          clientX: rectangle.left + 2,
+          clientY: rectangle.top + 2,
+        })
+      );
+    });
+  await expect(details).toHaveCount(0);
+
+  await page
+    .frameLocator('iframe')
+    .locator('body')
+    .evaluate((body) => {
+      const document = body.ownerDocument;
+      const window = document.defaultView;
+      window.getSelection().removeAllRanges();
+      const link = document.createElement('a');
+      link.href = '#ignored';
+      link.textContent = 'ignoredlink';
+      body.prepend(link);
+      link.dispatchEvent(
+        new window.MouseEvent('click', {
+          bubbles: true,
+          clientX: 0,
+          clientY: 0,
+        })
+      );
+    });
+  await expect(details).toHaveCount(0);
+
+  await page.getByRole('button', { name: 'Open reader settings' }).click();
+  const settings = page.getByRole('dialog', { name: 'Reader settings' });
+  await settings.getByLabel('EPUB reading mode').selectOption('scrolled-doc');
+  await page.keyboard.press('Escape');
+  await expect(
+    page.frameLocator('iframe').getByText(/Page 1 contains/)
+  ).toBeVisible({ timeout: 15_000 });
+
+  await clickIframeWord(page, 'representative');
+  await expect(details).toContainText('representative');
+  await expect(details.locator('code')).toHaveText(/^epubcfi\(.+,.+\)$/);
 });

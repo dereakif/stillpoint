@@ -7,6 +7,10 @@ import {
 } from 'react';
 import { EpubViewer } from 'react-epub-viewer';
 import { DEFAULT_EPUB_READER_SETTINGS } from '../storage/epubReaderSettings';
+import {
+  caretPositionFromPoint,
+  findWordAtOffset,
+} from '../epub/wordSelection';
 
 const FONT_STACKS = {
   serif: "Georgia, 'Times New Roman', serif",
@@ -46,6 +50,7 @@ const EpubViewerAdapter = forwardRef(
       onLocationChange,
       onPageChange,
       onTocChange,
+      onWordClick,
       settings = DEFAULT_EPUB_READER_SETTINGS,
     },
     ref
@@ -53,14 +58,19 @@ const EpubViewerAdapter = forwardRef(
     const viewerRef = useRef(null);
     const renditionRef = useRef(null);
     const relocatedHandlerRef = useRef(null);
+    const contentHookRef = useRef(null);
+    const unloadedHookRef = useRef(null);
+    const contentCleanupRef = useRef(new Map());
     const onLocationChangeRef = useRef(onLocationChange);
     const onPageChangeRef = useRef(onPageChange);
+    const onWordClickRef = useRef(onWordClick);
     const [bookUrl, setBookUrl] = useState(null);
 
     useEffect(() => {
       onLocationChangeRef.current = onLocationChange;
       onPageChangeRef.current = onPageChange;
-    }, [onLocationChange, onPageChange]);
+      onWordClickRef.current = onWordClick;
+    }, [onLocationChange, onPageChange, onWordClick]);
 
     useImperativeHandle(
       ref,
@@ -90,19 +100,34 @@ const EpubViewerAdapter = forwardRef(
       applyTypography(renditionRef.current, settings);
     }, [settings]);
 
+    const detachContentListeners = () => {
+      contentCleanupRef.current.forEach((cleanup) => cleanup());
+      contentCleanupRef.current.clear();
+    };
+
+    const detachRenditionHooks = (rendition) => {
+      if (!rendition) return;
+      if (relocatedHandlerRef.current) {
+        rendition.off('relocated', relocatedHandlerRef.current);
+      }
+      if (contentHookRef.current) {
+        rendition.hooks.content.deregister(contentHookRef.current);
+      }
+      if (unloadedHookRef.current) {
+        rendition.hooks.unloaded.deregister(unloadedHookRef.current);
+      }
+      detachContentListeners();
+    };
+
     useEffect(
       () => () => {
-        if (renditionRef.current && relocatedHandlerRef.current) {
-          renditionRef.current.off('relocated', relocatedHandlerRef.current);
-        }
+        detachRenditionHooks(renditionRef.current);
       },
       []
     );
 
     const handleRenditionChanged = (rendition) => {
-      if (renditionRef.current && relocatedHandlerRef.current) {
-        renditionRef.current.off('relocated', relocatedHandlerRef.current);
-      }
+      detachRenditionHooks(renditionRef.current);
 
       const handleRelocated = (location) => {
         const cfi = location?.start?.cfi;
@@ -135,10 +160,86 @@ const EpubViewerAdapter = forwardRef(
         });
       };
 
+      const attachContentListener = (contents) => {
+        if (!contents?.document || contentCleanupRef.current.has(contents))
+          return;
+
+        const handleClick = (event) => {
+          const target =
+            event.target?.nodeType === 1
+              ? event.target
+              : event.target?.parentElement;
+          if (
+            !target ||
+            target.closest(
+              'a, button, input, textarea, select, option, label, img, svg, video, audio, [role="button"], [contenteditable="true"]'
+            )
+          ) {
+            return;
+          }
+
+          const selection = contents.window?.getSelection?.();
+          if (
+            selection &&
+            !selection.isCollapsed &&
+            selection.toString().trim()
+          ) {
+            return;
+          }
+
+          const caret = caretPositionFromPoint(
+            contents.document,
+            event.clientX,
+            event.clientY
+          );
+          const text = caret?.node?.textContent;
+          const word = findWordAtOffset(
+            text,
+            caret?.offset,
+            contents.document.documentElement?.lang || undefined
+          );
+          if (!caret?.node || !word) return;
+
+          const range = contents.document.createRange();
+          range.setStart(caret.node, word.start);
+          range.setEnd(caret.node, word.end);
+          const cfiRange = contents.cfiFromRange(range);
+          const section = rendition.book.spine.get(contents.sectionIndex);
+          const navigationItem = section?.href
+            ? rendition.book.navigation.get(section.href)
+            : null;
+
+          onWordClickRef.current?.({
+            text: word.text,
+            cfiRange,
+            sectionHref: section?.href || null,
+            chapterLabel: navigationItem?.label?.trim() || null,
+            startOffset: word.start,
+            endOffset: word.end,
+          });
+        };
+
+        contents.document.addEventListener('click', handleClick);
+        contentCleanupRef.current.set(contents, () => {
+          contents.document.removeEventListener('click', handleClick);
+        });
+      };
+
+      const detachContentListener = (view) => {
+        const contents = view?.contents;
+        const cleanup = contentCleanupRef.current.get(contents);
+        cleanup?.();
+        contentCleanupRef.current.delete(contents);
+      };
+
       renditionRef.current = rendition;
       relocatedHandlerRef.current = handleRelocated;
+      contentHookRef.current = attachContentListener;
+      unloadedHookRef.current = detachContentListener;
       applyTypography(rendition, settings);
       rendition.on('relocated', handleRelocated);
+      rendition.hooks.content.register(attachContentListener);
+      rendition.hooks.unloaded.register(detachContentListener);
 
       if (initialCfi) rendition.display(initialCfi);
     };
