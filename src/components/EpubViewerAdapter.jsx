@@ -41,8 +41,6 @@ const applyTypography = (rendition, settings) => {
 };
 
 const clampPercentage = (value) => Math.min(1, Math.max(0, value));
-const RETURN_MARKER_DURATION = 1800;
-const REDUCED_RETURN_MARKER_DURATION = 500;
 
 const EpubViewerAdapter = forwardRef(
   (
@@ -55,7 +53,6 @@ const EpubViewerAdapter = forwardRef(
       onPageChange,
       onTocChange,
       onWordClick,
-      reduceMotion = false,
       returnCfi,
       settings = DEFAULT_EPUB_READER_SETTINGS,
     },
@@ -69,7 +66,6 @@ const EpubViewerAdapter = forwardRef(
     const contentCleanupRef = useRef(new Map());
     const restoringInitialCfiRef = useRef(false);
     const initialRestoreKeyRef = useRef(null);
-    const returnMarkerTimerRef = useRef(null);
     const returnMarkerRef = useRef(null);
     const onLocationChangeRef = useRef(onLocationChange);
     const onPageChangeRef = useRef(onPageChange);
@@ -116,8 +112,6 @@ const EpubViewerAdapter = forwardRef(
     };
 
     const clearReturnMarker = () => {
-      window.clearTimeout(returnMarkerTimerRef.current);
-      returnMarkerTimerRef.current = null;
       const marker = returnMarkerRef.current;
       if (!marker) return;
       marker.rendition.annotations.remove(marker.cfi, 'highlight');
@@ -133,16 +127,12 @@ const EpubViewerAdapter = forwardRef(
         undefined,
         'stillpoint-return-position',
         {
-          fill: 'currentColor',
-          'fill-opacity': reduceMotion ? '0.18' : '0.26',
-          'mix-blend-mode': 'multiply',
+          fill: '#facc15',
+          'fill-opacity': '0.45',
+          'mix-blend-mode': 'normal',
         }
       );
       returnMarkerRef.current = { rendition, cfi };
-      returnMarkerTimerRef.current = window.setTimeout(
-        clearReturnMarker,
-        reduceMotion ? REDUCED_RETURN_MARKER_DURATION : RETURN_MARKER_DURATION
-      );
     };
 
     const detachRenditionHooks = (rendition) => {

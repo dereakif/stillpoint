@@ -633,7 +633,10 @@ function App() {
         epubImmersiveSession.sourceCfi;
       if (returnCfi) {
         epubReturnCfiRef.current = returnCfi;
-        updateActiveEpubLocation({ cfi: returnCfi });
+        updateActiveEpubLocation({
+          cfi: returnCfi,
+          lastImmersiveCfi: returnCfi,
+        });
       }
     }
 
@@ -784,9 +787,13 @@ function App() {
             onInitialLocationRestored={finishEpubLocationRestore}
             onLocationChange={updateActiveEpubLocation}
             onWordClick={mode === 'epub' ? startEpubReading : undefined}
-            reduceMotion={reduceMotion}
             returnCfi={
-              mode === 'epub-returning' ? epubReturnCfiRef.current : null
+              mode === 'epub-returning'
+                ? epubReturnCfiRef.current
+                : activeEpub.reading?.lastImmersiveCfi ===
+                    activeEpub.reading?.cfi
+                  ? activeEpub.reading.lastImmersiveCfi
+                  : null
             }
           />
         </Suspense>

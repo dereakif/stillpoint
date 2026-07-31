@@ -39,7 +39,7 @@ describe('document record migrations', () => {
       readingPosition,
     });
 
-    expect(DOCUMENT_SCHEMA_VERSION).toBe(3);
+    expect(DOCUMENT_SCHEMA_VERSION).toBe(4);
     expect(record.schemaVersion).toBe(DOCUMENT_SCHEMA_VERSION);
     expect(record.kind).toBe('text');
     expect(record.readingSession).toEqual({
@@ -81,6 +81,7 @@ describe('document record migrations', () => {
         cfi: '  epubcfi(/6/2)  ',
         percentage: 4,
         chapterLabel: 12,
+        lastImmersiveCfi: '  epubcfi(/6/2!/4/2,/1:0,/1:4)  ',
       },
       readingPosition: { blockId: 'legacy' },
       readingSession: { wpm: 500 },
@@ -97,6 +98,7 @@ describe('document record migrations', () => {
       cfi: 'epubcfi(/6/2)',
       percentage: 1,
       chapterLabel: null,
+      lastImmersiveCfi: 'epubcfi(/6/2!/4/2,/1:0,/1:4)',
     });
     expect(record.progress).toBe(1);
     expect(record.readingSession).toBeUndefined();
@@ -114,7 +116,7 @@ describe('EPUB records', () => {
     expect(record.id).toBeString();
     expect(record.title).toBe('A Wizard of Earthsea');
     expect(record.kind).toBe('epub');
-    expect(record.schemaVersion).toBe(3);
+    expect(record.schemaVersion).toBe(4);
     expect(record.source).toEqual({
       file,
       fileName: 'A Wizard of Earthsea.epub',
@@ -125,6 +127,7 @@ describe('EPUB records', () => {
       cfi: null,
       percentage: 0,
       chapterLabel: null,
+      lastImmersiveCfi: null,
     });
     expect(record.progress).toBe(0);
   });
@@ -140,11 +143,16 @@ describe('EPUB records', () => {
         cfi: 'epubcfi(/6/4)',
         percentage: 0.42,
         chapterLabel: 'Chapter 2',
+        lastImmersiveCfi: 'epubcfi(/6/4!/4/2,/1:0,/1:4)',
       },
     });
 
     expect(updated.source.file).toBe(file);
     expect(updated.reading.percentage).toBe(0.42);
+    expect(updated.reading.lastImmersiveCfi).toBe(
+      'epubcfi(/6/4!/4/2,/1:0,/1:4)'
+    );
+
     expect(updated.progress).toBe(0.42);
   });
 });

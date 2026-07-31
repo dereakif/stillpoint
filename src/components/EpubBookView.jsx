@@ -29,7 +29,6 @@ const EpubBookView = ({
   onLibrary,
   onLocationChange,
   onWordClick,
-  reduceMotion = false,
   returnCfi = null,
 }) => {
   const viewerRef = useRef(null);
@@ -171,7 +170,6 @@ const EpubBookView = ({
           onInitialLocationRestored={handleInitialLocationRestored}
           onLocationChange={onLocationChange}
           onPageChange={setPageInfo}
-          reduceMotion={reduceMotion}
           returnCfi={returnCfi}
           settings={readerSettings}
           onTocChange={setToc}

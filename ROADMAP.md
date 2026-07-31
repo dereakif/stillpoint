@@ -225,7 +225,8 @@ Persistent highlighting is intentionally out of scope. The iframe interaction th
 - [x] Pause immediately on exit.
 - [x] Translate the immersive token position back to its stored CFI range.
 - [x] Return the viewer to that CFI.
-- [x] Show a temporary return-position indicator without creating a persistent highlight feature.
+- [x] Persist the exact last immersive word CFI and restore it when reopening the book.
+- [x] Keep the saved last immersive word highlighted in the EPUB page without adding a general-purpose highlight feature.
 - [x] Restore focus to a meaningful viewer control.
 - [x] Keep reduced-motion behavior calm and immediate.
 

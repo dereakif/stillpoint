@@ -3,7 +3,7 @@ import { clampReadingWpm } from '../readingSpeed';
 const DATABASE_NAME = 'stillpoint-library';
 const DATABASE_VERSION = 1;
 const DOCUMENT_STORE = 'documents';
-export const DOCUMENT_SCHEMA_VERSION = 3;
+export const DOCUMENT_SCHEMA_VERSION = 4;
 
 const DEFAULT_READING_SESSION = Object.freeze({
   position: null,
@@ -183,6 +183,7 @@ const normalizeEpubRecord = (record) => {
       cfi: normalizeOptionalString(savedReading.cfi),
       percentage,
       chapterLabel: normalizeOptionalString(savedReading.chapterLabel),
+      lastImmersiveCfi: normalizeOptionalString(savedReading.lastImmersiveCfi),
     },
     progress: percentage,
   };

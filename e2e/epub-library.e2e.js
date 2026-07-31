@@ -64,6 +64,7 @@ const getStoredEpubSummary = (page) =>
                     fileName: record.source?.fileName,
                     fileSize: record.source?.file?.size,
                     cfi: record.reading?.cfi,
+                    lastImmersiveCfi: record.reading?.lastImmersiveCfi,
                   }
                 : null
             );
@@ -141,6 +142,7 @@ test('stores, reopens, exports, and deletes an imported EPUB', async ({
     fileName: 'minimal.epub',
     fileSize: expect.any(Number),
     cfi: expect.stringMatching(/^epubcfi\(/),
+    lastImmersiveCfi: null,
   });
   expect(storedBook.fileSize).toBeGreaterThan(0);
 
@@ -286,12 +288,25 @@ test('starts EPUB immersion at a clicked word and ignores selections and links',
   await expect(page.getByRole('button', { name: 'Next page' })).toBeFocused();
   const returnMarker = page.locator('[ref="stillpoint-return-position"]');
   await expect(returnMarker).toBeVisible();
-  await expect(returnMarker).toHaveCount(0, { timeout: 3_000 });
+  await page.waitForTimeout(2_000);
+  await expect(returnMarker).toBeVisible();
   await expect
-    .poll(() => getStoredEpubSummary(page).then((record) => record?.cfi), {
-      timeout: 15_000,
-    })
-    .toMatch(/^epubcfi\(.+,.+\)$/);
+    .poll(() => getStoredEpubSummary(page), { timeout: 15_000 })
+    .toMatchObject({
+      cfi: expect.stringMatching(/^epubcfi\(.+,.+\)$/),
+      lastImmersiveCfi: expect.stringMatching(/^epubcfi\(.+,.+\)$/),
+    });
+  const savedImmersiveCfi = (await getStoredEpubSummary(page)).cfi;
+  expect((await getStoredEpubSummary(page)).lastImmersiveCfi).toBe(
+    savedImmersiveCfi
+  );
+
+  await page.getByRole('button', { name: 'Library' }).click();
+  await page.reload();
+  await page.getByRole('button', { name: /^Stillpoint Test Book/ }).click();
+  await expect(page.getByRole('button', { name: 'Next page' })).toBeFocused();
+  await expect(returnMarker).toBeVisible();
+  expect((await getStoredEpubSummary(page)).cfi).toBe(savedImmersiveCfi);
 
   await page
     .frameLocator('iframe')
