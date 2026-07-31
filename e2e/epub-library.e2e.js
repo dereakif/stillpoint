@@ -6,41 +6,50 @@ const openLibraryFromEmptyEditor = async (page) => {
   await expect(page.getByRole('heading', { name: 'Library' })).toBeVisible();
 };
 
-const clickIframeWord = async (page, word) => {
+const dispatchIframeWordEvent = async (page, word, type) => {
   try {
     await page
       .frameLocator('iframe')
       .locator('body')
-      .evaluate((body, targetWord) => {
-        const document = body.ownerDocument;
-        const window = document.defaultView;
-        const walker = document.createTreeWalker(
-          body,
-          window.NodeFilter.SHOW_TEXT
-        );
-        let node = walker.nextNode();
-        while (node && !node.textContent.includes(targetWord)) {
-          node = walker.nextNode();
-        }
-        if (!node) throw new Error(`Word not found: ${targetWord}`);
+      .evaluate(
+        (body, { targetWord, eventType }) => {
+          const document = body.ownerDocument;
+          const window = document.defaultView;
+          const walker = document.createTreeWalker(
+            body,
+            window.NodeFilter.SHOW_TEXT
+          );
+          let node = walker.nextNode();
+          while (node && !node.textContent.includes(targetWord)) {
+            node = walker.nextNode();
+          }
+          if (!node) throw new Error(`Word not found: ${targetWord}`);
 
-        const start = node.textContent.indexOf(targetWord);
-        const range = document.createRange();
-        range.setStart(node, start);
-        range.setEnd(node, start + targetWord.length);
-        const rectangle = range.getBoundingClientRect();
-        node.parentElement.dispatchEvent(
-          new window.MouseEvent('click', {
-            bubbles: true,
-            clientX: rectangle.left + rectangle.width / 2,
-            clientY: rectangle.top + rectangle.height / 2,
-          })
-        );
-      }, word);
+          const start = node.textContent.indexOf(targetWord);
+          const range = document.createRange();
+          range.setStart(node, start);
+          range.setEnd(node, start + targetWord.length);
+          const rectangle = range.getBoundingClientRect();
+          node.parentElement.dispatchEvent(
+            new window.MouseEvent(eventType, {
+              bubbles: true,
+              clientX: rectangle.left + rectangle.width / 2,
+              clientY: rectangle.top + rectangle.height / 2,
+            })
+          );
+        },
+        { targetWord: word, eventType: type }
+      );
   } catch (error) {
     if (!String(error?.message).includes('Frame was detached')) throw error;
   }
 };
+
+const clickIframeWord = (page, word) =>
+  dispatchIframeWordEvent(page, word, 'click');
+
+const hoverIframeWord = (page, word) =>
+  dispatchIframeWordEvent(page, word, 'mousemove');
 
 const getStoredEpubSummary = (page) =>
   page.evaluate(
@@ -274,6 +283,76 @@ test('starts EPUB immersion at a clicked word and ignores selections and links',
   await expect(
     page.frameLocator('iframe').getByText(/Page 1 contains/)
   ).toBeVisible({ timeout: 15_000 });
+
+  await hoverIframeWord(page, 'representative');
+  const hoverCue = page.locator('[ref="stillpoint-word-hover"]');
+  await expect(hoverCue).toBeVisible();
+  const hoverAppearance = await hoverCue.evaluate((element) => {
+    const rectangle = element.querySelector('rect');
+    const gradientId = rectangle
+      ?.getAttribute('fill')
+      ?.match(/^url\(#(.+)\)$/)?.[1];
+    const gradient = gradientId
+      ? element.ownerSVGElement?.querySelector(`#${gradientId}`)
+      : null;
+    return {
+      backdropFilter: rectangle?.style.backdropFilter,
+      gradientStops: [...(gradient?.querySelectorAll('stop') ?? [])].map(
+        (stop) => stop.getAttribute('stop-color')
+      ),
+      lineCount: element.querySelectorAll('line').length,
+      rectangleFill: rectangle?.getAttribute('fill'),
+      rectangleStroke: rectangle?.getAttribute('stroke'),
+    };
+  });
+  expect(hoverAppearance).toMatchObject({
+    backdropFilter: '',
+    gradientStops: ['#ffffff', '#f5f5f4', '#ffffff', '#e7e5e4', '#ffffff'],
+    lineCount: 0,
+    rectangleFill: expect.stringMatching(/^url\(#stillpoint-glass-/),
+    rectangleStroke: '#ffffff',
+  });
+  const pulseFrames = await hoverCue.evaluate(async (element) => {
+    const rectangle = element.querySelector('rect');
+    const gradientId = rectangle
+      .getAttribute('fill')
+      .match(/^url\(#(.+)\)$/)[1];
+    const gradient = element.ownerSVGElement.querySelector(`#${gradientId}`);
+    const readFrame = () =>
+      [
+        rectangle.getAttribute('fill-opacity'),
+        rectangle.style.transform,
+        gradient.getAttribute('x1'),
+      ].join(':');
+    const first = readFrame();
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    return [first, readFrame()];
+  });
+  expect(pulseFrames[1]).not.toBe(pulseFrames[0]);
+  await expect
+    .poll(() =>
+      page
+        .frameLocator('iframe')
+        .locator('body')
+        .evaluate((body) => getComputedStyle(body).cursor)
+    )
+    .toBe('pointer');
+  await page
+    .frameLocator('iframe')
+    .locator('body')
+    .evaluate((body) => {
+      const document = body.ownerDocument;
+      document.dispatchEvent(new document.defaultView.MouseEvent('mouseleave'));
+    });
+  await expect(hoverCue).toHaveCount(0);
+  await expect
+    .poll(() =>
+      page
+        .frameLocator('iframe')
+        .locator('body')
+        .evaluate((body) => getComputedStyle(body).cursor)
+    )
+    .not.toBe('pointer');
 
   await clickIframeWord(page, 'representative');
   const immersiveMode = page.getByRole('region', {

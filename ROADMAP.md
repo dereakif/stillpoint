@@ -216,6 +216,7 @@ Persistent highlighting is intentionally out of scope. The iframe interaction th
 - [x] Extract only a bounded RSVP text window from the current spine section around that word.
 - [x] Preserve token-to-CFI-range mappings for the bounded session instead of parsing or tokenizing the whole book.
 - [x] Start immersive mode at the clicked word or nearest readable token.
+- [x] Give pointer users a lightweight pulsing word cue before activation.
 - [x] Keep EPUB content completely absent behind active immersive mode.
 - [ ] Provide a keyboard-accessible **Immerse from here** action for readers who cannot point to a word.
 - [ ] Verify clicks inside nested inline markup, punctuation, Unicode text, footnotes, and publisher-styled content.

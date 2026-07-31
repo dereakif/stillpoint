@@ -53,6 +53,7 @@ const EpubViewerAdapter = forwardRef(
       onPageChange,
       onTocChange,
       onWordClick,
+      reduceEffects = false,
       returnCfi,
       settings = DEFAULT_EPUB_READER_SETTINGS,
     },
@@ -198,7 +199,129 @@ const EpubViewerAdapter = forwardRef(
         if (!contents?.document || contentCleanupRef.current.has(contents))
           return;
 
-        const handleClick = (event) => {
+        let hoveredCfi = null;
+        let hoverAnimationFrame = null;
+        let hoverPulseFrame = null;
+        let hoverGlassDefinition = null;
+        const cursorElement = contents.document.documentElement;
+        const originalCursor = cursorElement.style.getPropertyValue('cursor');
+        const originalCursorPriority =
+          cursorElement.style.getPropertyPriority('cursor');
+
+        const setWordCursor = (isInteractive) => {
+          if (isInteractive) {
+            cursorElement.style.setProperty('cursor', 'pointer', 'important');
+          } else if (originalCursor) {
+            cursorElement.style.setProperty(
+              'cursor',
+              originalCursor,
+              originalCursorPriority
+            );
+          } else {
+            cursorElement.style.removeProperty('cursor');
+          }
+        };
+
+        const clearHoveredWord = () => {
+          if (hoverAnimationFrame !== null) {
+            window.cancelAnimationFrame(hoverAnimationFrame);
+            hoverAnimationFrame = null;
+          }
+          if (hoverPulseFrame !== null) {
+            window.cancelAnimationFrame(hoverPulseFrame);
+            hoverPulseFrame = null;
+          }
+          hoverGlassDefinition?.remove();
+          hoverGlassDefinition = null;
+          setWordCursor(false);
+          if (!hoveredCfi) return;
+          rendition.annotations.remove(hoveredCfi, 'underline');
+          hoveredCfi = null;
+        };
+
+        const animateHoveredWord = (annotation) => {
+          const element = annotation?.mark?.element;
+          const svg = element?.ownerSVGElement;
+          if (!element || !svg) return;
+          element.style.pointerEvents = 'none';
+          element.querySelectorAll('line').forEach((line) => line.remove());
+
+          const namespace = 'http://www.w3.org/2000/svg';
+          const definitions = svg.ownerDocument.createElementNS(
+            namespace,
+            'defs'
+          );
+          const gradient = svg.ownerDocument.createElementNS(
+            namespace,
+            'linearGradient'
+          );
+          const gradientId = `stillpoint-glass-${Date.now()}-${Math.random()
+            .toString(16)
+            .slice(2)}`;
+          gradient.id = gradientId;
+          gradient.setAttribute('x1', '-100%');
+          gradient.setAttribute('x2', '0%');
+          gradient.setAttribute('y1', '0%');
+          gradient.setAttribute('y2', '100%');
+
+          [
+            ['0%', '#ffffff', '0.08'],
+            ['28%', '#f5f5f4', '0.18'],
+            ['48%', '#ffffff', '0.88'],
+            ['66%', '#e7e5e4', '0.14'],
+            ['100%', '#ffffff', '0.06'],
+          ].forEach(([offset, color, opacity]) => {
+            const stop = svg.ownerDocument.createElementNS(namespace, 'stop');
+            stop.setAttribute('offset', offset);
+            stop.setAttribute('stop-color', color);
+            stop.setAttribute('stop-opacity', opacity);
+            gradient.appendChild(stop);
+          });
+          definitions.appendChild(gradient);
+          svg.prepend(definitions);
+          hoverGlassDefinition = definitions;
+
+          const rectangles = [...element.querySelectorAll('rect')];
+          rectangles.forEach((rectangle) => {
+            rectangle.setAttribute('fill', `url(#${gradientId})`);
+            rectangle.setAttribute('fill-opacity', '0.5');
+            rectangle.setAttribute('stroke', '#ffffff');
+            rectangle.setAttribute('stroke-opacity', '0.9');
+            rectangle.setAttribute('stroke-width', '1.15');
+            rectangle.setAttribute('rx', '5');
+            rectangle.style.filter =
+              'drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.22)) drop-shadow(0 -1px 1px rgba(255, 255, 255, 0.9))';
+            rectangle.style.transformBox = 'fill-box';
+            rectangle.style.transformOrigin = 'center';
+          });
+
+          if (reduceEffects) return;
+
+          const startedAt = window.performance.now();
+          const renderGlassFrame = (timestamp) => {
+            if (!hoveredCfi) return;
+            const elapsed = timestamp - startedAt;
+            const wave = (Math.sin((elapsed / 1400) * Math.PI * 2) + 1) / 2;
+            const sweep =
+              (Math.sin((elapsed / 2600) * Math.PI * 2 - Math.PI / 2) + 1) / 2;
+            gradient.setAttribute('x1', `${-120 + sweep * 220}%`);
+            gradient.setAttribute('x2', `${-20 + sweep * 220}%`);
+            rectangles.forEach((rectangle) => {
+              rectangle.setAttribute('fill-opacity', String(0.3 + wave * 0.32));
+              rectangle.setAttribute(
+                'stroke-opacity',
+                String(0.28 + wave * 0.26)
+              );
+              rectangle.style.transform = `scale(${0.985 + wave * 0.05}, ${
+                0.93 + wave * 0.14
+              })`;
+            });
+            hoverPulseFrame = window.requestAnimationFrame(renderGlassFrame);
+          };
+          hoverPulseFrame = window.requestAnimationFrame(renderGlassFrame);
+        };
+
+        const resolveEventWord = (event) => {
           const target =
             event.target?.nodeType === 1
               ? event.target
@@ -209,7 +332,7 @@ const EpubViewerAdapter = forwardRef(
               'a, button, input, textarea, select, option, label, img, svg, video, audio, [role="button"], [contenteditable="true"]'
             )
           ) {
-            return;
+            return null;
           }
 
           const selection = contents.window?.getSelection?.();
@@ -218,7 +341,7 @@ const EpubViewerAdapter = forwardRef(
             !selection.isCollapsed &&
             selection.toString().trim()
           ) {
-            return;
+            return null;
           }
 
           const caret = caretPositionFromPoint(
@@ -232,12 +355,56 @@ const EpubViewerAdapter = forwardRef(
             caret?.offset,
             contents.document.documentElement?.lang || undefined
           );
-          if (!caret?.node || !word) return;
+          if (!caret?.node || !word) return null;
 
           const range = contents.document.createRange();
           range.setStart(caret.node, word.start);
           range.setEnd(caret.node, word.end);
-          const cfiRange = contents.cfiFromRange(range);
+          return {
+            caret,
+            word,
+            cfiRange: contents.cfiFromRange(range),
+          };
+        };
+
+        const handleMouseMove = (event) => {
+          if (!onWordClickRef.current) {
+            clearHoveredWord();
+            return;
+          }
+
+          if (hoverAnimationFrame !== null) {
+            window.cancelAnimationFrame(hoverAnimationFrame);
+          }
+          hoverAnimationFrame = window.requestAnimationFrame(() => {
+            hoverAnimationFrame = null;
+            const resolvedWord = resolveEventWord(event);
+            if (!resolvedWord) {
+              clearHoveredWord();
+              return;
+            }
+
+            if (hoveredCfi === resolvedWord.cfiRange) {
+              setWordCursor(true);
+              return;
+            }
+            clearHoveredWord();
+            setWordCursor(true);
+            const annotation = rendition.annotations.underline(
+              resolvedWord.cfiRange,
+              { stillpointWordHover: true },
+              undefined,
+              'stillpoint-word-hover'
+            );
+            hoveredCfi = resolvedWord.cfiRange;
+            animateHoveredWord(annotation);
+          });
+        };
+
+        const handleClick = (event) => {
+          const resolvedWord = resolveEventWord(event);
+          if (!resolvedWord) return;
+          const { caret, word, cfiRange } = resolvedWord;
           const section = rendition.book.spine.get(contents.sectionIndex);
           const navigationItem = section?.href
             ? rendition.book.navigation.get(section.href)
@@ -270,8 +437,13 @@ const EpubViewerAdapter = forwardRef(
         };
 
         contents.document.addEventListener('click', handleClick);
+        contents.document.addEventListener('mousemove', handleMouseMove);
+        contents.document.addEventListener('mouseleave', clearHoveredWord);
         contentCleanupRef.current.set(contents, () => {
+          clearHoveredWord();
           contents.document.removeEventListener('click', handleClick);
+          contents.document.removeEventListener('mousemove', handleMouseMove);
+          contents.document.removeEventListener('mouseleave', clearHoveredWord);
         });
       };
 

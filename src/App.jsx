@@ -787,6 +787,7 @@ function App() {
             onInitialLocationRestored={finishEpubLocationRestore}
             onLocationChange={updateActiveEpubLocation}
             onWordClick={mode === 'epub' ? startEpubReading : undefined}
+            reduceEffects={appearanceSettings.reducedEffects}
             returnCfi={
               mode === 'epub-returning'
                 ? epubReturnCfiRef.current
